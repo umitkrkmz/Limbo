@@ -1,0 +1,275 @@
+<Window x:Class="Limbo.GUI.AddProfileDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add Profile" 
+        Height="480" Width="450"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <!-- ComboBox Item Style -->
+        <Style x:Key="ThemedComboBoxItemStyle" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" TargetName="Border" Value="{DynamicResource PrimaryBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" TargetName="Border" Value="{DynamicResource PrimaryDarkBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox Toggle Button -->
+        <ControlTemplate x:Key="ComboBoxToggleButton" TargetType="ToggleButton">
+            <Border x:Name="Border" Background="{DynamicResource SurfaceLightBrush}" CornerRadius="8" BorderThickness="0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="30"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0"/>
+                    <Path Grid.Column="1" Data="M0,0 L4,4 L8,0" Stroke="{DynamicResource TextSecondaryBrush}" 
+                          StrokeThickness="2" HorizontalAlignment="Center" 
+                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" TargetName="Border" Value="{DynamicResource BorderBrush}"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Themed ComboBox Style -->
+        <Style x:Key="ThemedComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceLightBrush}"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ThemedComboBoxItemStyle}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton" 
+                                          Template="{StaticResource ComboBoxToggleButton}"
+                                          Focusable="False"
+                                          IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"/>
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="12,10,30,10"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"/>
+                            <Popup x:Name="Popup" Placement="Bottom" 
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True" 
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder" 
+                                        Background="{DynamicResource SurfaceLightBrush}" 
+                                        CornerRadius="8" 
+                                        Margin="0,4,0,0"
+                                        BorderBrush="{DynamicResource BorderBrush}" 
+                                        BorderThickness="1"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="300">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Toggle Switch Style -->
+        <Style x:Key="ToggleSwitchStyle" TargetType="CheckBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="Track" Width="44" Height="24" CornerRadius="12" 
+                                    Background="{DynamicResource SurfaceLightBrush}" Cursor="Hand">
+                                <Border x:Name="Thumb" Width="18" Height="18" CornerRadius="9" 
+                                        Background="White" Margin="3,0,0,0" 
+                                        HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock x:Name="Label" Text="{TemplateBinding Content}" 
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="10,0,0,0" 
+                                       VerticalAlignment="Center" FontSize="12"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" TargetName="Track" Value="{DynamicResource PrimaryBrush}"/>
+                                <Setter Property="HorizontalAlignment" TargetName="Thumb" Value="Right"/>
+                                <Setter Property="Margin" TargetName="Thumb" Value="0,0,3,0"/>
+                                <Setter Property="Foreground" TargetName="Label" Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="12" Background="{DynamicResource SurfaceBrush}" 
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <Grid Margin="25">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <StackPanel>
+                <TextBlock Text="Add Domain Profile" FontSize="20" FontWeight="SemiBold" 
+                           Foreground="{DynamicResource TextBrush}" Margin="0,0,0,5"/>
+                <TextBlock Text="Configure bypass settings for a domain" FontSize="12" 
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,20"/>
+            </StackPanel>
+
+            <!-- Form -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <!-- Domain -->
+                    <TextBlock Text="Domain Pattern" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                    <TextBox x:Name="DomainBox" Text="*.discord.com"/>
+                    <TextBlock Text="Use *.domain.com for wildcards" FontSize="10" 
+                               Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,15"/>
+
+                    <!-- Bypass Method -->
+                    <TextBlock Text="Bypass Method" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                    <ComboBox x:Name="MethodCombo" Style="{StaticResource ThemedComboBoxStyle}"
+                              SelectionChanged="MethodCombo_SelectionChanged">
+                        <ComboBoxItem Content="🔄 Adaptive (Auto-detect)" IsSelected="True" Tag="Adaptive"/>
+                        <ComboBoxItem Content="🔐 ECH (Encrypted SNI)" Tag="Ech"/>
+                        <ComboBoxItem Content="✂️ TCP Fragmentation" Tag="TcpFragmentation"/>
+                        <ComboBoxItem Content="🧠 Smart Fragmentation" Tag="SmartFragmentation"/>
+                        <ComboBoxItem Content="⚡ Desync" Tag="Desync"/>
+                        <ComboBoxItem Content="👻 Fake TTL" Tag="FakeTtl"/>
+                        <ComboBoxItem Content="📦 UDP Fake" Tag="UdpFake"/>
+                        <ComboBoxItem Content="🌐 QUIC Fake" Tag="QuicFake"/>
+                    </ComboBox>
+                    <TextBlock x:Name="MethodDescription" 
+                               Text="Automatically tries all methods and saves the best one" 
+                               FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,15"/>
+
+                    <!-- Parameter Mode Toggle (only for non-Adaptive methods) -->
+                    <StackPanel x:Name="ParamModePanel" Visibility="Collapsed" Margin="0,0,0,15">
+                        <Border Background="{DynamicResource BackgroundBrush}" CornerRadius="8" Padding="15">
+                            <StackPanel>
+                                <CheckBox x:Name="ManualParamsToggle" 
+                                          Style="{StaticResource ToggleSwitchStyle}"
+                                          Content="Manual Parameters"
+                                          Checked="ManualParamsToggle_Changed"
+                                          Unchecked="ManualParamsToggle_Changed"/>
+                                <TextBlock x:Name="ParamModeDescription" 
+                                           Text="Parameters will be auto-tuned for best results" 
+                                           FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Manual Parameters Section -->
+                    <StackPanel x:Name="ManualParamsPanel" Visibility="Collapsed">
+                        <!-- Fragment Size (for fragmentation methods) -->
+                        <StackPanel x:Name="FragmentSizeSection" Margin="0,0,0,10">
+                            <TextBlock Text="Fragment Size (bytes)" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="FragmentSizeBox" Text="2" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Smaller = harder for DPI to parse (1-10 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- TTL Value (for FakeTtl method) -->
+                        <StackPanel x:Name="TtlSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="TTL Value" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="TtlBox" Text="3" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Packets expire before reaching DPI (1-5 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- Split Position (for Desync method) -->
+                        <StackPanel x:Name="SplitPositionSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="Split Position (bytes)" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="SplitPositionBox" Text="3" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Where to split packet for out-of-order delivery (1-20 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- ECH Public Name (for ECH method) -->
+                        <StackPanel x:Name="EchSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="ECH Public Name (optional)" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="EchPublicNameBox" Text=""/>
+                            <TextBlock Text="Custom public name for ECH (leave empty for auto-detect)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- QUIC Fake Packet Size (for QuicFake method) -->
+                        <StackPanel x:Name="QuicFakeSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="Fake Packet Size (bytes)" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="QuicFakeSizeBox" Text="64" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Size of fake QUIC packet to inject (32-256 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- UDP Fake TTL (for UdpFake method) -->
+                        <StackPanel x:Name="UdpFakeTtlSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="Fake TTL Value" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="UdpFakeTtlBox" Text="1" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="TTL for fake UDP packets — dies before server (1-3 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <!-- Smart Fragmentation Split Offset -->
+                        <StackPanel x:Name="SplitOffsetSection" Visibility="Collapsed" Margin="0,0,0,10">
+                            <TextBlock Text="SNI Split Offset (bytes)" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                            <TextBox x:Name="SplitOffsetBox" Text="3" Width="120" HorizontalAlignment="Left"/>
+                            <TextBlock Text="Offset from SNI start to split at (1-10 recommended)" 
+                                       FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"
+                        Padding="25,12" Margin="0,0,10,0"
+                        Click="Cancel_Click"/>
+                <Button Content="Add Profile" Style="{StaticResource PrimaryButtonStyle}"
+                        Padding="25,12"
+                        Click="Add_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

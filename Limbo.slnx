@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Limbo.Console/Limbo.Console.csproj" />
+    <Project Path="src/Limbo.Core/Limbo.Core.csproj" />
+    <Project Path="src/Limbo.Driver/Limbo.Driver.csproj" />
+    <Project Path="src/Limbo.GUI/Limbo.GUI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Limbo.Tests/Limbo.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Authors>Umit Korkmaz</Authors>
+    <Description>WinDivert packet capture driver for Limbo</Description>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Limbo</Product>
+    <Company>Umit Korkmaz</Company>
+    <Copyright>Copyright © 2025 Umit Korkmaz</Copyright>
+  </PropertyGroup>
+
+  <!-- WinDivert native files - copy to output directory -->
+  <ItemGroup>
+    <None Include="runtimes\win-x64\native\WinDivert.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>WinDivert.dll</Link>
+    </None>
+    <None Include="runtimes\win-x64\native\WinDivert64.sys">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>WinDivert64.sys</Link>
+    </None>
+  </ItemGroup>
+
+</Project>
+

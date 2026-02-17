@@ -1,0 +1,119 @@
+## .gitignore for Limbo - DPI Bypass Engine (.NET / C# / WPF)
+
+# ─── Build output ────────────────────────────────────────────────────────────
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# ─── Visual Studio ────────────────────────────────────────────────────────────
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.pidb
+*.svclog
+*.scc
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+[Ee]xpress/
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# ─── NuGet ────────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+!packages/repositories.config
+nuget.exe
+
+# ─── .NET / MSBuild ───────────────────────────────────────────────────────────
+project.lock.json
+project.fragment.lock.json
+artifacts/
+**/Properties/launchSettings.json
+
+# Test results / coverage
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+CoverageReport/
+
+# ─── Rider / JetBrains ───────────────────────────────────────────────────────
+.idea/
+*.sln.iml
+_ReSharper*/
+*.ReSharper
+*.DotSettings.user
+
+# ─── Windows ─────────────────────────────────────────────────────────────────
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# ─── WinDivert binaries (driver files - distribute separately) ───────────────
+WinDivert.dll
+WinDivert64.sys
+WinDivert32.sys
+
+# ─── User / runtime data (stored in %LOCALAPPDATA%\Limbo\) ───────────────────
+# These are persisted locally per user and should not be committed
+config.json
+Auto-Blacklist.txt
+profiles/
+
+# ─── Sensitive / secrets ─────────────────────────────────────────────────────
+*.env
+*.env.local
+secrets.json
+appsettings.local.json
+
+# ─── Release / publish output (binaries - upload to GitHub Releases, not committed) ─
+publish/
+release/
+
+# ─── Windows reserved device names (cannot be deleted, must be ignored) ──────
+nul
+con
+prn
+aux
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.orig
+*.rej
+*.bak
+*.tmp
