@@ -121,7 +121,9 @@ Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/
 
 ### ⚠️ WinDivert Setup (Required)
 
-Limbo uses WinDivert for low-level packet interception via P/Invoke. The driver files are **not bundled** with Limbo (different license) and must be placed manually.
+Limbo uses WinDivert for low-level packet interception via P/Invoke. WinDivert is licensed separately (LGPL v3 / GPL v2) and is **not included** in this repository or release ZIP — you must obtain and place the files manually in both cases.
+
+> **Building from source?** Place `WinDivert.dll` and `WinDivert64.sys` into `src/Limbo.Driver/runtimes/win-x64/native/` before building. MSBuild will automatically copy them to the output directory.
 
 **Step 1 — Download WinDivert 2.2.2:**
 
@@ -129,9 +131,9 @@ Limbo uses WinDivert for low-level packet interception via P/Invoke. The driver 
 
 Download `WinDivert-2.2.2-A.zip` and extract it.
 
-**Step 2 — Copy the files:**
+**Step 2 — Copy the files next to the executable:**
 
-For 64-bit systems (almost everyone):
+From the extracted ZIP, copy the `x64` variants:
 
 ```
 WinDivert-2.2.2-A/
@@ -140,20 +142,18 @@ WinDivert-2.2.2-A/
     └── WinDivert64.sys    ← copy this
 ```
 
-Place both files next to the Limbo executable:
+Place both files in the same folder as `Limbo.Console.exe` or `Limbo.GUI.exe`:
 
 ```
-# For CLI:
-src/Limbo.Console/bin/Release/net10.0/
-    ├── Limbo.Console.exe
-    ├── WinDivert.dll        ← here
-    └── WinDivert64.sys      ← here
+# Console (extracted ZIP):
+Limbo.Console.exe
+WinDivert.dll        ← here
+WinDivert64.sys      ← here
 
-# For GUI:
-src/Limbo.GUI/bin/Release/net10.0-windows/
-    ├── Limbo.GUI.exe
-    ├── WinDivert.dll        ← here
-    └── WinDivert64.sys      ← here
+# GUI (extracted ZIP):
+Limbo.GUI.exe
+WinDivert.dll        ← here
+WinDivert64.sys      ← here
 ```
 
 > **Why 2.2.2 specifically?** Limbo's P/Invoke declarations (`WinDivertNative.cs`) target the WinDivert 2.2 API. Older versions (1.x, 2.0) have different function signatures and **will not work**. Newer minor versions (2.2.x) should be compatible.

@@ -58,7 +58,7 @@ See [Pull Request Process](#pull-request-process) below.
 - Windows 10/11 64-bit
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Administrator privileges (required for WinDivert)
-- [WinDivert 2.2.2](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) DLL + SYS files
+- [WinDivert 2.2.2](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) — place `WinDivert.dll` and `WinDivert64.sys` into `src/Limbo.Driver/runtimes/win-x64/native/` before building
 
 ### Clone and Build
 
