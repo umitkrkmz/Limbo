@@ -46,11 +46,10 @@ This policy covers the Limbo source code in this repository:
 
 - `src/Limbo.Core` — bypass engine, radar, DNS, ECH, monitoring
 - `src/Limbo.Driver` — WinDivert P/Invoke wrapper
-- `src/Limbo.Console` — CLI application
-- `src/Limbo.GUI` — WPF application
+- `src/Limbo.Console` — interactive + scriptable CLI application
 
 **Out of scope:**
-- WinDivert itself (report to the [WinDivert project](https://github.com/basebe/WinDivert))
+- WinDivert itself (report to the [WinDivert project](https://github.com/basil00/WinDivert))
 - Third-party NuGet packages
 - Vulnerabilities in the .NET runtime
 

@@ -1,19 +1,25 @@
-using System.Diagnostics;
-using System.Net.Sockets;
+using System.Net;
 using Limbo.Core.Bypass;
+using Limbo.Core.Detection;
 using Limbo.Core.Profiles;
+using Limbo.Driver;
 
 namespace Limbo.Core.Engine;
 
 /// <summary>
-/// Calibration engine - automatically finds working bypass method for a domain
+/// Calibration engine - automatically finds working bypass method for a domain.
+/// Each strategy is tested by actually applying it (via a scoped WinDivert
+/// interception of just this test connection's traffic), not simulated -
+/// this requires Administrator privileges the same way `run` does. Without
+/// them, calibration still works but can't tell strategies apart from a
+/// plain connectivity check, and says so.
 /// Inspired by ZeroDivert's AdaptiveEngine
 /// </summary>
 public class CalibrationEngine
 {
     private readonly ProfileManager _profileManager;
     private readonly BypassEngine _bypassEngine;
-    
+
     public event Action<string>? OnLog;
     public event Action<CalibrationProgress>? OnProgress;
 
@@ -32,8 +38,25 @@ public class CalibrationEngine
         CancellationToken ct = default)
     {
         OnLog?.Invoke($"Starting calibration for {domain}:{port}");
-        
-        var strategies = _bypassEngine.GetStrategiesInOrder();
+
+        // Only TCP-capable strategies can be tested against a TLS ClientHello
+        // connectivity check. UDP/QUIC strategies (UdpFake, QuicFake) need a
+        // UDP-based test we don't have yet, so they're excluded rather than
+        // silently "tested" against the wrong protocol.
+        var strategies = _bypassEngine.GetStrategiesInOrder().Where(s => s.SupportsTcp).ToList();
+
+        var targetIp = await NetworkProbe.ResolveIPv4Async(domain, ct);
+        var canInterceptTraffic = targetIp != null && NetworkProbe.CanOpenWinDivert();
+
+        if (targetIp == null)
+        {
+            OnLog?.Invoke($"Could not resolve an IPv4 address for {domain} - strategies cannot be applied, results will only reflect plain connectivity");
+        }
+        else if (!canInterceptTraffic)
+        {
+            OnLog?.Invoke("Administrator privileges required to actually apply bypass strategies during calibration - falling back to a plain connectivity check for every strategy");
+        }
+
         var results = new List<(BypassMethod Method, bool Success, int LatencyMs)>();
 
         // Test without any bypass first (baseline)
@@ -45,13 +68,20 @@ public class CalibrationEngine
             TotalStrategies = strategies.Count + 1
         });
 
-        var baselineResult = await TestConnectionAsync(domain, port, ct);
+        var baselineResult = targetIp != null
+            ? await NetworkProbe.TestConnectionAsync(targetIp, domain, port, ct)
+            : (Success: false, LatencyMs: 0, FailureReason: "No IPv4 address to test");
         results.Add((BypassMethod.None, baselineResult.Success, baselineResult.LatencyMs));
+
+        if (!baselineResult.Success)
+        {
+            OnLog?.Invoke($"Baseline check failed: {baselineResult.FailureReason}");
+        }
 
         if (baselineResult.Success)
         {
             OnLog?.Invoke($"Direct connection works for {domain} (no bypass needed)");
-            
+
             // Save as no-bypass profile
             var profile = new DomainProfile
             {
@@ -77,11 +107,11 @@ public class CalibrationEngine
         var strategyIndex = 1;
         BypassMethod bestMethod = BypassMethod.None;
         int bestLatency = int.MaxValue;
-        
+
         foreach (var strategy in strategies)
         {
             var method = GetMethodFromStrategy(strategy);
-            
+
             OnProgress?.Invoke(new CalibrationProgress
             {
                 Domain = domain,
@@ -92,9 +122,11 @@ public class CalibrationEngine
 
             OnLog?.Invoke($"Testing {strategy.Name}...");
 
-            // For now, we simulate the test - in real implementation,
-            // we would need to actually apply the bypass during the connection test
-            var testResult = await TestWithBypassAsync(domain, port, method, ct);
+            var testResult = canInterceptTraffic
+                ? await TestWithBypassAsync(domain, targetIp!, port, strategy, ct)
+                : targetIp != null
+                    ? await NetworkProbe.TestConnectionAsync(targetIp, domain, port, ct)
+                    : (Success: false, LatencyMs: 0, FailureReason: "No IPv4 address to test");
             results.Add((method, testResult.Success, testResult.LatencyMs));
 
             if (testResult.Success && testResult.LatencyMs < bestLatency)
@@ -109,7 +141,7 @@ public class CalibrationEngine
             }
             else
             {
-                OnLog?.Invoke($"  ✗ {strategy.Name} failed");
+                OnLog?.Invoke($"  ✗ {strategy.Name} failed ({testResult.FailureReason})");
             }
 
             strategyIndex++;
@@ -155,151 +187,91 @@ public class CalibrationEngine
     /// </summary>
     public async Task<bool> IsBlockedAsync(string domain, int port = 443, CancellationToken ct = default)
     {
-        var result = await TestConnectionAsync(domain, port, ct);
+        var targetIp = await NetworkProbe.ResolveIPv4Async(domain, ct);
+        if (targetIp == null) return true; // can't even resolve - treat as blocked
+
+        var result = await NetworkProbe.TestConnectionAsync(targetIp, domain, port, ct);
         return !result.Success;
     }
 
-    private async Task<(bool Success, int LatencyMs)> TestConnectionAsync(
+    /// <summary>
+    /// Tests a domain with a specific strategy actually applied: opens a
+    /// WinDivert handle scoped to this connection's IP/port, intercepts the
+    /// outbound TLS ClientHello and runs it through the strategy exactly
+    /// like `run` would, forwards everything else untouched, then performs
+    /// the same connectivity check as the baseline.
+    /// </summary>
+    private async Task<(bool Success, int LatencyMs, string? FailureReason)> TestWithBypassAsync(
         string domain,
+        IPAddress targetIp,
         int port,
+        IDpiBypassStrategy strategy,
         CancellationToken ct)
     {
-        var sw = Stopwatch.StartNew();
-        
+        using var driver = new WinDivertDriver();
+        var filter = $"tcp and (tcp.DstPort == {port} or tcp.SrcPort == {port}) and (ip.DstAddr == {targetIp} or ip.SrcAddr == {targetIp})";
+
+        if (!driver.Open(filter))
+        {
+            return await NetworkProbe.TestConnectionAsync(targetIp, domain, port, ct);
+        }
+
+        var interceptTask = Task.Run(() => InterceptAndApplyStrategy(driver, strategy, ct), CancellationToken.None);
+
         try
         {
-            using var client = new TcpClient();
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(5));
-            
-            await client.ConnectAsync(domain, port, cts.Token);
-            
-            // Send TLS ClientHello and wait for response
-            var stream = client.GetStream();
-            var clientHello = CreateMinimalClientHello(domain);
-            await stream.WriteAsync(clientHello, cts.Token);
-            
-            // Try to read server hello
-            var buffer = new byte[1024];
-            var readTask = stream.ReadAsync(buffer, cts.Token);
-            var timeoutTask = Task.Delay(3000, cts.Token);
-            
-            var completed = await Task.WhenAny(readTask.AsTask(), timeoutTask);
-            
-            if (completed == readTask.AsTask())
+            return await NetworkProbe.TestConnectionAsync(targetIp, domain, port, ct);
+        }
+        finally
+        {
+            // Closing the handle unblocks the interceptor's pending WinDivertRecv,
+            // the same shutdown pattern RunCommand uses for the live capture loop.
+            driver.Dispose();
+            await interceptTask;
+        }
+    }
+
+    private static void InterceptAndApplyStrategy(WinDivertDriver driver, IDpiBypassStrategy strategy, CancellationToken ct)
+    {
+        var buffer = new byte[65535];
+
+        while (!ct.IsCancellationRequested)
+        {
+            if (!driver.Receive(buffer, out var length, out var isOutbound))
             {
-                var bytesRead = await readTask;
-                if (bytesRead > 0)
+                if (!driver.IsOpen) return; // handle closed by the caller - test is over
+                continue;
+            }
+
+            var packet = buffer.AsSpan(0, length);
+            var context = PacketInspector.Analyze(packet, isOutbound);
+
+            if (isOutbound && context.IsClientHello)
+            {
+                var packetContext = new PacketContext
                 {
-                    sw.Stop();
-                    return (true, (int)sw.ElapsedMilliseconds);
+                    IsOutbound = true,
+                    IsTcp = true,
+                    IsUdp = false,
+                    IsIPv6 = context.IsIPv6,
+                    SrcPort = context.SrcPort,
+                    DstPort = context.DstPort,
+                    IsSyn = context.IsSyn,
+                    IsClientHello = true,
+                    HasHttpHost = false,
+                    TargetDomain = context.TargetDomain
+                };
+
+                foreach (var result in strategy.Process(packet, packetContext))
+                {
+                    driver.Send(result.Data, result.RecalcChecksum);
                 }
             }
+            else
+            {
+                driver.Send(packet, false);
+            }
         }
-        catch
-        {
-            // Connection failed
-        }
-        
-        sw.Stop();
-        return (false, (int)sw.ElapsedMilliseconds);
-    }
-
-    private async Task<(bool Success, int LatencyMs)> TestWithBypassAsync(
-        string domain,
-        int port,
-        BypassMethod method,
-        CancellationToken ct)
-    {
-        // In a real implementation, this would:
-        // 1. Create a raw socket or use WinDivert to intercept
-        // 2. Apply the bypass strategy to outgoing packets
-        // 3. Test the connection
-        
-        // For now, we just test direct connection with a hint that bypass is enabled
-        // The actual bypass would be applied by LimboEngine during real traffic
-        
-        return await TestConnectionAsync(domain, port, ct);
-    }
-
-    private static byte[] CreateMinimalClientHello(string domain)
-    {
-        // Create a minimal TLS 1.2 ClientHello with the domain as SNI
-        var domainBytes = System.Text.Encoding.ASCII.GetBytes(domain);
-        
-        // This is a simplified ClientHello - real implementation would be more complete
-        var clientHello = new List<byte>
-        {
-            // TLS record header
-            0x16,       // ContentType: Handshake
-            0x03, 0x01, // Version: TLS 1.0 (for handshake compatibility)
-            0x00, 0x00, // Length placeholder (will be filled)
-            
-            // Handshake header
-            0x01,       // HandshakeType: ClientHello
-            0x00, 0x00, 0x00, // Length placeholder (will be filled)
-            
-            // ClientHello body
-            0x03, 0x03, // Version: TLS 1.2
-        };
-        
-        // Random (32 bytes)
-        clientHello.AddRange(new byte[32]);
-        
-        // Session ID length (0)
-        clientHello.Add(0x00);
-        
-        // Cipher suites
-        clientHello.Add(0x00);
-        clientHello.Add(0x02); // Length: 2
-        clientHello.Add(0x00);
-        clientHello.Add(0x2F); // TLS_RSA_WITH_AES_128_CBC_SHA
-        
-        // Compression methods
-        clientHello.Add(0x01); // Length: 1
-        clientHello.Add(0x00); // None
-        
-        // Extensions
-        var sniExtension = CreateSniExtension(domainBytes);
-        var extLen = sniExtension.Length;
-        clientHello.Add((byte)(extLen >> 8));
-        clientHello.Add((byte)(extLen & 0xFF));
-        clientHello.AddRange(sniExtension);
-        
-        // Fix lengths
-        var handshakeLen = clientHello.Count - 9;
-        clientHello[6] = (byte)((handshakeLen >> 16) & 0xFF);
-        clientHello[7] = (byte)((handshakeLen >> 8) & 0xFF);
-        clientHello[8] = (byte)(handshakeLen & 0xFF);
-        
-        var recordLen = clientHello.Count - 5;
-        clientHello[3] = (byte)((recordLen >> 8) & 0xFF);
-        clientHello[4] = (byte)(recordLen & 0xFF);
-        
-        return clientHello.ToArray();
-    }
-
-    private static byte[] CreateSniExtension(byte[] domain)
-    {
-        var ext = new List<byte>
-        {
-            0x00, 0x00, // Extension type: SNI
-        };
-        
-        var nameLen = domain.Length;
-        var listLen = nameLen + 3;
-        var extLen = listLen + 2;
-        
-        ext.Add((byte)(extLen >> 8));
-        ext.Add((byte)(extLen & 0xFF));
-        ext.Add((byte)(listLen >> 8));
-        ext.Add((byte)(listLen & 0xFF));
-        ext.Add(0x00); // Name type: hostname
-        ext.Add((byte)(nameLen >> 8));
-        ext.Add((byte)(nameLen & 0xFF));
-        ext.AddRange(domain);
-        
-        return ext.ToArray();
     }
 
     private static BypassMethod GetMethodFromStrategy(IDpiBypassStrategy strategy)
@@ -311,6 +283,7 @@ public class CalibrationEngine
             "TCP Desync" => BypassMethod.Desync,
             "Fake TTL" => BypassMethod.FakeTtl,
             "UDP Fake" => BypassMethod.UdpFake,
+            "ECH (Encrypted Client Hello)" => BypassMethod.Ech,
             _ => BypassMethod.None
         };
     }

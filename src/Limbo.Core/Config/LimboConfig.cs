@@ -32,10 +32,10 @@ public class LimboConfig
     public DnsSettings Dns { get; set; } = new();
 
     /// <summary>
-    /// Default bypass method for unknown domains
+    /// Method/parameter template applied when Radar auto-detects a newly
+    /// blocked domain. The Domain field on this template is unused.
     /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public BypassMethod DefaultMethod { get; set; } = BypassMethod.None;
+    public ProfileConfig DefaultMethodProfile { get; set; } = new() { Domain = "*", Method = BypassMethod.Adaptive };
 
     /// <summary>
     /// Domain profiles
@@ -43,32 +43,29 @@ public class LimboConfig
     public List<ProfileConfig> Profiles { get; set; } = [];
 
     /// <summary>
+    /// Interactive console UI language
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public Language Language { get; set; } = Language.English;
+
+    /// <summary>
     /// Stats update interval in milliseconds
     /// </summary>
     public int StatsIntervalMs { get; set; } = 1000;
 
     /// <summary>
-    /// Minimize to system tray instead of taskbar
+    /// Enable the Radar system (automatic ISP-block detection and adaptive
+    /// profile creation). Disabling this still runs the bypass engine for
+    /// manually configured profiles - it only turns off auto-detection.
     /// </summary>
-    public bool MinimizeToTray { get; set; } = true;
-
-    /// <summary>
-    /// Close to system tray instead of exiting
-    /// </summary>
-    public bool CloseToTray { get; set; } = true;
-
-    /// <summary>
-    /// Start application minimized to tray
-    /// </summary>
-    public bool StartMinimized { get; set; } = false;
-
-    /// <summary>
-    /// UI theme: System, Light, or Dark
-    /// </summary>
-    public string Theme { get; set; } = "System";
+    public bool EnableRadar { get; set; } = true;
 }
 
-
+public enum Language
+{
+    English,
+    Turkish
+}
 
 public class DnsSettings
 {
@@ -211,7 +208,6 @@ public static class ConfigManager
         {
             Filter = "tcp or udp",
             Verbose = false,
-            DefaultMethod = BypassMethod.None,
             Dns = new DnsSettings
             {
                 UseDoH = false,

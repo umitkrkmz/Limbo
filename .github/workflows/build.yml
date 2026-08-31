@@ -1,0 +1,42 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # WinDivert is licensed separately (LGPL v3 / GPL v2) and isn't
+      # distributed in this repo - see README's "WinDivert Setup" section.
+      # Limbo.Driver's build only needs these files to exist to satisfy its
+      # CopyToOutputDirectory step; empty placeholders are enough to build
+      # and run the test suite (nothing here touches the real driver).
+      - name: Create WinDivert placeholder binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "src/Limbo.Driver/runtimes/win-x64/native" | Out-Null
+          New-Item -ItemType File -Force -Path "src/Limbo.Driver/runtimes/win-x64/native/WinDivert.dll" | Out-Null
+          New-Item -ItemType File -Force -Path "src/Limbo.Driver/runtimes/win-x64/native/WinDivert64.sys" | Out-Null
+
+      - name: Restore
+        run: dotnet restore Limbo.slnx
+
+      - name: Build
+        run: dotnet build Limbo.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/Limbo.Tests/Limbo.Tests.csproj --configuration Release --no-build --verbosity normal

@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v1.1.0) - existing tag, for re-running a release manually"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          $version = $tag -replace '^v', ''
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      # WinDivert is licensed separately (LGPLv3/GPLv2 - see basil00/WinDivert)
+      # and isn't committed to this repo. Downloading the official pre-built
+      # binaries here (rather than relying on empty placeholders like the
+      # build-verification workflow does) means this same step both
+      # satisfies Limbo.Driver's build-time copy requirement AND gives us
+      # the real files to ship in the release package.
+      - name: Download official WinDivert 2.2.2
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/basil00/WinDivert/releases/download/v2.2.2/WinDivert-2.2.2-A.zip" -OutFile windivert.zip
+          Expand-Archive -Path windivert.zip -DestinationPath windivert-extracted
+          New-Item -ItemType Directory -Force -Path "src/Limbo.Driver/runtimes/win-x64/native" | Out-Null
+          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert.dll" "src/Limbo.Driver/runtimes/win-x64/native/WinDivert.dll"
+          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert64.sys" "src/Limbo.Driver/runtimes/win-x64/native/WinDivert64.sys"
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/basil00/WinDivert/master/LICENSE" -OutFile windivert-license.txt
+
+      - name: Restore
+        run: dotnet restore Limbo.slnx
+
+      - name: Build
+        run: dotnet build Limbo.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/Limbo.Tests/Limbo.Tests.csproj --configuration Release --no-build --verbosity normal
+
+      - name: Publish Limbo.Console (self-contained, single-file, win-x64)
+        run: >
+          dotnet publish src/Limbo.Console/Limbo.Console.csproj
+          --configuration Release --runtime win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ steps.version.outputs.version }}
+          --output publish
+
+      - name: Assemble release package
+        shell: pwsh
+        run: |
+          # Belt-and-suspenders: Limbo.Driver's CopyToOutputDirectory items
+          # generally flow through to a referencing project's publish output
+          # too, but copy explicitly so the release doesn't silently ship
+          # without WinDivert if that ever changes.
+          Copy-Item "src/Limbo.Driver/runtimes/win-x64/native/WinDivert.dll" "publish/WinDivert.dll" -Force
+          Copy-Item "src/Limbo.Driver/runtimes/win-x64/native/WinDivert64.sys" "publish/WinDivert64.sys" -Force
+          Copy-Item "windivert-license.txt" "publish/WinDivert-LICENSE.txt"
+          Copy-Item "LICENSE" "publish/LICENSE.txt"
+          Set-Content -Path "publish/THIRD_PARTY_NOTICES.txt" -Value @"
+          This package bundles WinDivert.dll and WinDivert64.sys from the
+          WinDivert project (https://github.com/basil00/WinDivert), dual-licensed
+          under your choice of LGPLv3 or GPLv2 - see WinDivert-LICENSE.txt.
+          WinDivert's source code is available at the URL above.
+
+          Limbo itself is licensed under GPLv2 - see LICENSE.txt.
+          "@
+
+      - name: Zip package
+        id: zip
+        shell: pwsh
+        run: |
+          $zipName = "Limbo-Console-${{ steps.version.outputs.tag }}-win-x64.zip"
+          Compress-Archive -Path "publish/*" -DestinationPath $zipName
+          $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash
+          "name=$zipName" >> $env:GITHUB_OUTPUT
+          "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $zip = "${{ steps.zip.outputs.name }}"
+          $notes = @"
+          WinDivert is bundled in this ZIP (see WinDivert-LICENSE.txt / THIRD_PARTY_NOTICES.txt inside).
+          Extract and run ``Limbo.Console.exe`` as Administrator.
+
+          **SHA-256:** ``${{ steps.zip.outputs.sha256 }}``
+          "@
+          Set-Content -Path release-notes.txt -Value $notes
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zip --clobber
+            gh release edit $tag --notes-file release-notes.txt
+          } else {
+            gh release create $tag $zip --title "Limbo $tag" --notes-file release-notes.txt
+          }

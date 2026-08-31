@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Agreement;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -8,14 +7,18 @@ using Org.BouncyCastle.Security;
 namespace Limbo.Core.Ech;
 
 /// <summary>
-/// HPKE (Hybrid Public Key Encryption) wrapper for ECH
-/// Implements DHKEM(X25519, HKDF-SHA256, AES-128-GCM)
+/// RFC 9180 HPKE (Hybrid Public Key Encryption) sender-side wrapper, mode_base (0x00).
+/// Ciphersuite: DHKEM(X25519, HKDF-SHA256) + HKDF-SHA256 + AES-128-GCM
+/// (kem_id=0x0020, kdf_id=0x0001, aead_id=0x0001) - the mandatory-to-implement
+/// suite used by TLS Encrypted Client Hello.
 /// </summary>
 public class HpkeWrapper
 {
     private readonly byte[] _serverPublicKey;
-    private byte[]? _sharedSecret;
+    private byte[]? _key;
+    private byte[]? _baseNonce;
     private byte[]? _encapsulatedKey;
+    private ulong _sequence;
 
     public HpkeWrapper(byte[] serverPublicKey)
     {
@@ -23,50 +26,58 @@ public class HpkeWrapper
     }
 
     /// <summary>
-    /// Setup sender context and return encapsulated key
+    /// Runs DHKEM(X25519, HKDF-SHA256) Encap against the recipient's public key,
+    /// then the HPKE KeySchedule (mode_base). Returns "enc", the serialized
+    /// ephemeral public key that must be sent alongside the ciphertext.
     /// </summary>
     public byte[] SetupSender(byte[] info)
     {
-        // Generate ephemeral X25519 key pair
         var keyGen = new X25519KeyPairGenerator();
         keyGen.Init(new X25519KeyGenerationParameters(new SecureRandom()));
         var keyPair = keyGen.GenerateKeyPair();
 
-        var privateKey = (X25519PrivateKeyParameters)keyPair.Private;
-        var publicKey = (X25519PublicKeyParameters)keyPair.Public;
+        var skE = (X25519PrivateKeyParameters)keyPair.Private;
+        var pkE = (X25519PublicKeyParameters)keyPair.Public;
 
-        // Encapsulated key is our public key
-        _encapsulatedKey = publicKey.GetEncoded();
+        var enc = pkE.GetEncoded();
+        _encapsulatedKey = enc;
 
-        // Compute shared secret via X25519 DH
-        var serverPubKey = new X25519PublicKeyParameters(_serverPublicKey, 0);
+        var dh = new byte[HpkePrimitives.Ndh];
         var agreement = new X25519Agreement();
-        agreement.Init(privateKey);
-        
-        var secret = new byte[32];
-        agreement.CalculateAgreement(serverPubKey, secret, 0);
+        agreement.Init(skE);
+        agreement.CalculateAgreement(new X25519PublicKeyParameters(_serverPublicKey, 0), dh, 0);
 
-        // Derive encryption key using HKDF-SHA256
-        _sharedSecret = DeriveKey(secret, _encapsulatedKey, info);
+        var sharedSecret = HpkePrimitives.KemExtractAndExpand(dh, enc, _serverPublicKey);
+        var (key, baseNonce, _) = HpkePrimitives.KeySchedule(sharedSecret, info);
 
-        return _encapsulatedKey;
+        _key = key;
+        _baseNonce = baseNonce;
+        _sequence = 0;
+
+        return enc;
     }
 
     /// <summary>
-    /// Encrypt data using AEAD (AES-128-GCM)
+    /// AEAD-seals plaintext under the key derived by <see cref="SetupSender"/>.
+    /// The nonce is always computed internally as base_nonce XOR sequence per
+    /// RFC 9180 Section 5.2 - a caller-supplied nonce would not be
+    /// reproducible by a spec-conformant receiver, so there is no such
+    /// parameter here.
     /// </summary>
-    public byte[] Seal(byte[] plaintext, byte[] aad, byte[] nonce)
+    public byte[] Seal(byte[] plaintext, byte[] aad)
     {
-        if (_sharedSecret == null)
+        if (_key == null || _baseNonce == null)
             throw new InvalidOperationException("Call SetupSender first");
 
-        using var aes = new AesGcm(_sharedSecret.AsSpan(0, 16), 16);
+        var nonce = HpkePrimitives.ComputeNonce(_baseNonce, _sequence);
+        _sequence++;
+
+        using var aes = new AesGcm(_key, HpkePrimitives.Nt);
         var ciphertext = new byte[plaintext.Length];
-        var tag = new byte[16];
+        var tag = new byte[HpkePrimitives.Nt];
 
         aes.Encrypt(nonce, plaintext, ciphertext, tag, aad);
 
-        // Return ciphertext + tag
         var result = new byte[ciphertext.Length + tag.Length];
         ciphertext.CopyTo(result, 0);
         tag.CopyTo(result, ciphertext.Length);
@@ -75,31 +86,8 @@ public class HpkeWrapper
     }
 
     /// <summary>
-    /// Derive key using HKDF-SHA256
-    /// </summary>
-    private static byte[] DeriveKey(byte[] secret, byte[] enc, byte[] info)
-    {
-        // kem_context = enc || pkR
-        // shared_secret = ExtractAndExpand(dh, kem_context)
-        
-        // Simplified HKDF: 
-        // PRK = HMAC-SHA256(salt, IKM)
-        // OKM = HMAC-SHA256(PRK, info || 0x01)
-
-        using var hmac = new HMACSHA256(enc);
-        var prk = hmac.ComputeHash(secret);
-
-        using var hmac2 = new HMACSHA256(prk);
-        var infoWithCounter = new byte[info.Length + 1];
-        info.CopyTo(infoWithCounter, 0);
-        infoWithCounter[^1] = 0x01;
-
-        return hmac2.ComputeHash(infoWithCounter);
-    }
-
-    /// <summary>
     /// Get the encapsulated key (for including in ClientHello)
     /// </summary>
-    public byte[] GetEncapsulatedKey() => 
+    public byte[] GetEncapsulatedKey() =>
         _encapsulatedKey ?? throw new InvalidOperationException("Call SetupSender first");
 }

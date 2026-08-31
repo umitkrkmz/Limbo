@@ -74,7 +74,7 @@ dotnet build
 dotnet test tests/Limbo.Tests
 ```
 
-All 48 tests must pass before submitting a PR.
+All tests must pass before submitting a PR.
 
 ### Project Structure
 
@@ -82,8 +82,7 @@ All 48 tests must pass before submitting a PR.
 src/
   Limbo.Core/      # Business logic — bypass strategies, radar, DNS, ECH
   Limbo.Driver/    # WinDivert P/Invoke wrapper
-  Limbo.Console/   # CLI application
-  Limbo.GUI/       # WPF desktop application
+  Limbo.Console/   # Interactive + scriptable CLI application
 tests/
   Limbo.Tests/     # xUnit unit tests
 ```

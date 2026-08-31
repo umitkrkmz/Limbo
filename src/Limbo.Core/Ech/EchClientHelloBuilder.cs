@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Limbo.Core.Ech;
@@ -36,13 +35,15 @@ public class EchClientHelloBuilder
             var enc = hpke.SetupSender(info);
 
             // Build ClientHelloInner (with real SNI)
-            var clientHelloInner = BuildClientHelloInner(originalClientHello, realSni);
+            var clientHelloInner = BuildClientHelloInner(originalClientHello, echConfig, realSni);
 
-            // Encrypt ClientHelloInner
-            var nonce = new byte[12];
-            RandomNumberGenerator.Fill(nonce);
-            var aad = BuildAad(echConfig, enc);
-            var encryptedInner = hpke.Seal(clientHelloInner, aad, nonce);
+            // AAD is the "ClientHelloOuterAAD": the ClientHelloOuter we're about to
+            // send, but with the ECH extension's payload zeroed out (same length as
+            // the real ciphertext will be, since AES-128-GCM is length-preserving
+            // plus a fixed-size tag). Build it now, before we have the real
+            // ciphertext, so HPKE can bind the encryption to the exact outer message.
+            var aad = BuildOuterAad(originalClientHello, echConfig, enc, clientHelloInner.Length, sniOffset, sniLength);
+            var encryptedInner = hpke.Seal(clientHelloInner, aad);
 
             // Build ECH extension payload
             var echExtension = BuildEchExtension(echConfig, enc, encryptedInner);
@@ -64,19 +65,14 @@ public class EchClientHelloBuilder
     }
 
     /// <summary>
-    /// Find SNI extension offset and length in ClientHello
+    /// Locate the 2-byte "extensions length" field that precedes the extensions
+    /// list in a TLS ClientHello (after record header, handshake header,
+    /// version, random, session ID, cipher suites, and compression methods).
     /// </summary>
-    private static (int Offset, int Length) FindSniExtension(ReadOnlySpan<byte> clientHello)
+    private static int FindExtensionsLengthOffset(ReadOnlySpan<byte> clientHello)
     {
-        // Skip TLS record header (5 bytes) + Handshake header (4 bytes)
-        // + Version (2) + Random (32) + Session ID length (1 + var)
-        // + Cipher suites (2 + var) + Compression (1 + var)
-        // Then we're at extensions
-
-        if (clientHello.Length < 43) return (-1, 0);
-
         var offset = 5 + 4 + 2 + 32; // Record + Handshake + Version + Random
-        
+
         // Session ID
         var sessionIdLen = clientHello[offset];
         offset += 1 + sessionIdLen;
@@ -89,11 +85,22 @@ public class EchClientHelloBuilder
         var compressionLen = clientHello[offset];
         offset += 1 + compressionLen;
 
-        if (offset + 2 > clientHello.Length) return (-1, 0);
+        return offset;
+    }
+
+    /// <summary>
+    /// Find SNI extension offset and length in ClientHello
+    /// </summary>
+    private static (int Offset, int Length) FindSniExtension(ReadOnlySpan<byte> clientHello)
+    {
+        if (clientHello.Length < 43) return (-1, 0);
+
+        var extLenOffset = FindExtensionsLengthOffset(clientHello);
+        if (extLenOffset + 2 > clientHello.Length) return (-1, 0);
 
         // Extensions length
-        var extensionsLen = BinaryPrimitives.ReadUInt16BigEndian(clientHello[offset..]);
-        offset += 2;
+        var extensionsLen = BinaryPrimitives.ReadUInt16BigEndian(clientHello[extLenOffset..]);
+        var offset = extLenOffset + 2;
 
         var extensionsEnd = offset + extensionsLen;
 
@@ -128,25 +135,74 @@ public class EchClientHelloBuilder
     }
 
     /// <summary>
-    /// Build ClientHelloInner with real SNI
+    /// Build the EncodedClientHelloInner (draft-ietf-tls-esni §5.1/§6.1.3):
+    /// the real client's ClientHello body, byte-for-byte, with only
+    /// legacy_session_id zeroed and padding appended.
+    ///
+    /// This deliberately does NOT synthesize a new ClientHello (new random,
+    /// new key_share, etc.). Limbo intercepts and rewrites a real client's
+    /// outbound packet - the eventual TLS 1.3 session keys are derived from
+    /// this exact content (in particular the client's key_share, whose
+    /// private key only the real client holds). Substituting our own would
+    /// desync the real client's TLS stack from what the server computes and
+    /// silently break the connection. The server reconstructs
+    /// legacy_session_id from ClientHelloOuter's (unencrypted) copy, so
+    /// zeroing it here is the one required transformation.
     /// </summary>
-    private static byte[] BuildClientHelloInner(ReadOnlySpan<byte> original, string realSni)
+    private static byte[] BuildClientHelloInner(ReadOnlySpan<byte> original, EchConfig echConfig, string realSni)
     {
-        // For simplicity, just return encoded SNI for inner
-        // In full implementation, this would be the complete inner ClientHello
-        var sniBytes = Encoding.ASCII.GetBytes(realSni);
-        var inner = new byte[sniBytes.Length + 16]; // Simplified
-        sniBytes.CopyTo(inner, 0);
-        return inner;
+        const int headerLen = 5 + 4; // record header + handshake header
+        var body = original[headerLen..];
+
+        const int sessionIdLenOffset = 2 + 32; // client_version(2) + random(32)
+        var sessionIdLen = body[sessionIdLenOffset];
+        var afterSessionId = sessionIdLenOffset + 1 + sessionIdLen;
+
+        var encoded = new byte[sessionIdLenOffset + 1 + (body.Length - afterSessionId)];
+        body[..sessionIdLenOffset].CopyTo(encoded);
+        encoded[sessionIdLenOffset] = 0x00; // legacy_session_id: empty
+        body[afterSessionId..].CopyTo(encoded.AsSpan(sessionIdLenOffset + 1));
+
+        return PadEncodedClientHelloInner(encoded, echConfig.MaximumNameLength, realSni.Length);
     }
 
     /// <summary>
-    /// Build AAD for HPKE encryption
+    /// Pads EncodedClientHelloInner per §6.1.3's recommended scheme: enough
+    /// bytes to make the real SNI's length indistinguishable from
+    /// ECHConfig's advertised maximum_name_length, then rounded up to a
+    /// multiple of 32 bytes so the ciphertext length alone doesn't leak
+    /// fine-grained information about the real hostname.
     /// </summary>
-    private static byte[] BuildAad(EchConfig config, byte[] enc)
+    private static byte[] PadEncodedClientHelloInner(byte[] encoded, int maximumNameLength, int sniLength)
     {
-        // aad = ClientHelloOuterAAD
-        return config.RawConfig;
+        var sniPadding = Math.Max(0, maximumNameLength - sniLength);
+        var lengthAfterSniPadding = encoded.Length + sniPadding;
+        var blockPadding = 31 - ((lengthAfterSniPadding - 1) % 32);
+
+        var padded = new byte[encoded.Length + sniPadding + blockPadding]; // trailing bytes already zero
+        encoded.CopyTo(padded, 0);
+        return padded;
+    }
+
+    /// <summary>
+    /// Build the ClientHelloOuterAAD: the fully-formed ClientHelloOuter we're
+    /// about to send, with the ECH extension's payload zeroed out. This lets
+    /// HPKE's AEAD bind the encrypted inner hello to the exact outer message
+    /// it will travel with, without a circular dependency on the ciphertext
+    /// itself (the ciphertext has the same length as the plaintext plus a
+    /// fixed-size AEAD tag, so the placeholder is already the right size).
+    /// </summary>
+    private static byte[] BuildOuterAad(
+        ReadOnlySpan<byte> original,
+        EchConfig config,
+        byte[] enc,
+        int innerPlaintextLength,
+        int sniOffset,
+        int sniLength)
+    {
+        var placeholderPayload = new byte[innerPlaintextLength + HpkePrimitives.Nt];
+        var placeholderExtension = BuildEchExtension(config, enc, placeholderPayload);
+        return BuildClientHelloOuter(original, config.PublicName, placeholderExtension, sniOffset, sniLength);
     }
 
     /// <summary>
@@ -236,12 +292,14 @@ public class EchClientHelloBuilder
         original[afterSni..].CopyTo(result.AsSpan(offset));
         offset += original.Length - afterSni;
 
-        // Append ECH extension (before final bytes)
-        // This is simplified - real implementation patches extension length
-        echExtension.CopyTo(result, offset - echExtension.Length);
+        // Append ECH extension. Extensions are the last field of ClientHello,
+        // so `offset` now points exactly at the end of the copied data -
+        // appending here places it as the final extension in the list.
+        echExtension.CopyTo(result, offset);
 
-        // Update lengths in headers
-        UpdateLengths(result, sizeDiff);
+        // Update lengths in headers (record, handshake, and extensions-list length)
+        var extensionsLengthOffset = FindExtensionsLengthOffset(original);
+        UpdateLengths(result, sizeDiff, extensionsLengthOffset);
 
         return result;
     }
@@ -284,9 +342,9 @@ public class EchClientHelloBuilder
     }
 
     /// <summary>
-    /// Update TLS record and handshake message lengths
+    /// Update TLS record, handshake message, and extensions-list lengths
     /// </summary>
-    private static void UpdateLengths(byte[] data, int sizeDiff)
+    private static void UpdateLengths(byte[] data, int sizeDiff, int extensionsLengthOffset)
     {
         // TLS record length (bytes 3-4)
         var recordLen = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(3));
@@ -298,5 +356,9 @@ public class EchClientHelloBuilder
         data[6] = (byte)(handshakeLen >> 16);
         data[7] = (byte)(handshakeLen >> 8);
         data[8] = (byte)handshakeLen;
+
+        // Extensions list length (2 bytes)
+        var extensionsLen = BinaryPrimitives.ReadUInt16BigEndian(data.AsSpan(extensionsLengthOffset));
+        BinaryPrimitives.WriteUInt16BigEndian(data.AsSpan(extensionsLengthOffset), (ushort)(extensionsLen + sizeDiff));
     }
 }

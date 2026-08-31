@@ -6,9 +6,12 @@
 
 > **Named after Inception's deepest dream layer — where DPI gets lost.**
 
+[![Build & Test](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml/badge.svg)](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License](https://img.shields.io/badge/License-GPL%20v2-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
+
+**🇬🇧 English** | [🇹🇷 Türkçe](README.tr.md)
 
 </div>
 
@@ -22,12 +25,12 @@ Limbo is a next-generation DPI (Deep Packet Inspection) bypass engine featuring:
 - **7 Bypass Strategies** — TCP Fragmentation, Smart Fragmentation, Desync, Fake TTL, UDP Fake, ECH, QUIC Fake
 - **🔐 ECH (Encrypted Client Hello)** — Encrypts SNI so DPI cannot see target domain
 - **🛰 Radar System** — Auto-detects blocked domains and creates bypass profiles automatically
+- **📡 Network Analysis** — Identifies your ISP and runs a live scan reporting DNS tampering, RST injection, or silent dropping for a domain
 - **ISP Behavior Analysis** — Detects RST injection, silent drops, DNS poisoning
-- **Automatic Calibration** — Finds the best bypass method per domain
+- **Automatic Calibration** — Actually applies each strategy through a scoped live capture to find what really works per domain, not a simulation
 - **SIMD Optimization** — AVX2-accelerated packet parsing
 - **DNS over HTTPS** — Bypass ISP DNS blocking
-- **Modern GUI** — Dark/Light theme WPF application with real-time stats
-- **Full CLI** — All features available from the command line
+- **Interactive Console** — Spectre.Console-powered menu with live traffic dashboard, plus a scriptable CLI
 
 ---
 
@@ -45,13 +48,29 @@ IspBehaviorAnalyzer          ConnectionTracker
                     ↓
          Auto Adaptive profile created
                     ↓
-         GUI / CLI reflects new domain
+         Console reflects new domain
 ```
 
 When Limbo detects that your ISP is blocking a domain, it automatically:
 1. Adds it to the radar blacklist
-2. Creates an **Adaptive** bypass profile for it
+2. Creates a bypass profile for it (method configurable — defaults to **Adaptive**)
 3. Starts applying bypass immediately
+
+---
+
+## 📡 Network Analysis
+
+Answers "what is my ISP actually doing to this connection?" From the interactive menu's **Network Analysis** screen:
+
+- **Who you're connected through** — public IP, ISP/organization (ASN), and rough location, looked up on demand (no local network setting reveals which ISP owns your WAN connection)
+- **Local network info** — active interface, system-configured DNS servers
+- **A live behavior scan for one domain** (requires Administrator, same as `run`) — opens a scoped, read-only capture of just that domain's traffic and reports:
+  - **DNS tampering** — system DNS vs DNS-over-HTTPS mismatch
+  - **RST injection** — an inbound reset that looks artificially inserted (window size, TTL, RST+ACK heuristics)
+  - **Silent dropping** — the request goes out, nothing ever comes back
+  - **Reachable** — no interference detected
+
+Without Administrator, only the ISP/network identity is shown — the live scan is skipped with a clear note rather than failing silently.
 
 ---
 
@@ -75,10 +94,9 @@ When Limbo detects that your ISP is blocking a domain, it automatically:
 ```
 Limbo/
 ├── src/
-│   ├── Limbo.Console/          # CLI application
-│   ├── Limbo.GUI/              # WPF Desktop Application
+│   ├── Limbo.Console/          # Interactive + scriptable CLI application
 │   ├── Limbo.Core/             # Main business logic
-│   │   ├── Analysis/           # Radar: ISP behavior detection, blacklist
+│   │   ├── Analysis/           # Radar, ISP behavior detection, network analysis, blacklist
 │   │   ├── Bypass/             # 7 DPI bypass strategies
 │   │   ├── Config/             # JSON configuration system
 │   │   ├── Detection/          # SIMD packet inspection
@@ -90,21 +108,20 @@ Limbo/
 │   │   └── Profiles/           # Per-domain wildcard profiles
 │   └── Limbo.Driver/           # WinDivert P/Invoke wrapper
 └── tests/
-    └── Limbo.Tests/            # xUnit unit tests (48 tests)
+    └── Limbo.Tests/            # xUnit unit tests
 ```
 
 ---
 
 ## 📥 Downloads
 
-Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/Limbo/releases) page.
+Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/Limbo/releases) page, built and published automatically by [`release.yml`](.github/workflows/release.yml).
 
 | Package | Description |
 |---------|-------------|
-| `Limbo-Console-v1.0-win-x64.zip` | CLI application (self-contained, no .NET install needed) |
-| `Limbo-GUI-v1.0-win-x64.zip` | WPF desktop application (self-contained, no .NET install needed) |
+| `Limbo-Console-<version>-win-x64.zip` | CLI application (self-contained, no .NET install needed) — **WinDivert is bundled**, ready to run |
 
-> **After downloading:** Place `WinDivert.dll` and `WinDivert64.sys` next to the executable before running. See [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) below.
+> **After downloading:** Extract the ZIP and run `Limbo.Console.exe` as Administrator — `WinDivert.dll`, `WinDivert64.sys`, and WinDivert's license (`WinDivert-LICENSE.txt`) are already included. The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
 
 > **SHA-256 checksums** are listed in each release's description for verification.
 
@@ -121,9 +138,9 @@ Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/
 
 ### ⚠️ WinDivert Setup (Required)
 
-Limbo uses WinDivert for low-level packet interception via P/Invoke. WinDivert is licensed separately (LGPL v3 / GPL v2) and is **not included** in this repository or release ZIP — you must obtain and place the files manually in both cases.
+Limbo uses WinDivert for low-level packet interception via P/Invoke. WinDivert is licensed separately (LGPL v3 / GPL v2) and is **not committed to this repository** — the steps below are only needed if you're building from source. Pre-built release ZIPs (see "Downloads" above) already have WinDivert bundled.
 
-> **Building from source?** Place `WinDivert.dll` and `WinDivert64.sys` into `src/Limbo.Driver/runtimes/win-x64/native/` before building. MSBuild will automatically copy them to the output directory.
+> **Building from source:** Place `WinDivert.dll` and `WinDivert64.sys` into `src/Limbo.Driver/runtimes/win-x64/native/` before building. MSBuild will automatically copy them to the output directory.
 
 **Step 1 — Download WinDivert 2.2.2:**
 
@@ -142,16 +159,10 @@ WinDivert-2.2.2-A/
     └── WinDivert64.sys    ← copy this
 ```
 
-Place both files in the same folder as `Limbo.Console.exe` or `Limbo.GUI.exe`:
+Place both files in the same folder as `Limbo.Console.exe`:
 
 ```
-# Console (extracted ZIP):
 Limbo.Console.exe
-WinDivert.dll        ← here
-WinDivert64.sys      ← here
-
-# GUI (extracted ZIP):
-Limbo.GUI.exe
 WinDivert.dll        ← here
 WinDivert64.sys      ← here
 ```
@@ -166,17 +177,13 @@ cd Limbo
 dotnet build -c Release
 ```
 
-### Run GUI (Recommended)
+### Run
 
 ```powershell
-# Run as Administrator
-dotnet run --project src/Limbo.GUI
-```
+# Run as Administrator - launches the interactive menu
+dotnet run --project src/Limbo.Console
 
-### Run CLI
-
-```powershell
-# Run as Administrator
+# Or use it as a scriptable CLI
 dotnet run --project src/Limbo.Console -- --help
 ```
 
@@ -239,28 +246,19 @@ limbo radar-import blocked.txt
 
 ---
 
-## 🖥 GUI Features
+## 🖥 Interactive Menu
 
-### Profile Management
-- **Add Profile** — Domain pattern + bypass method + all parameters
-- **Edit Profile** — Right-click or double-click to modify
-- **Delete Profile** — X button or right-click context menu
-- **Import/Export** — JSON profile sharing
-- **Radar Import/Export** — Share auto-detected blocked domain lists
+Running `limbo` with no arguments opens a full interactive dashboard built on Spectre.Console:
 
-### Real-time Statistics
-- Packets captured / matched / modified
-- Data processed
-- Live download / upload rate + peak rates
+- **Start Engine** — live-updating traffic table (packets, matched/modified, bandwidth) while the bypass engine runs
+- **Profile Management** — list / add / edit / delete profiles through a wizard that only asks for the parameters relevant to the chosen method
+- **DNS Settings** — toggle DoH, pick a provider (Cloudflare/Google/Quad9/custom), see the system's actual configured DNS servers, test resolution live
+- **Adaptive Engine (Radar)** — turn auto-detection on/off, choose which bypass method (and parameters) newly detected domains get, list/import/export/clear detections
+- **Network Analysis** — ISP/public IP identity plus an on-demand live scan for DNS tampering, RST injection, or silent dropping against a domain
+- **Calibration** and **Connection Test** — same checks as the CLI commands, with a progress bar / results table
+- **General Settings** — verbose logging, log file path, and **language** (English / Turkish)
 
-### Activity Log
-- Color-coded live log (green = success, red = error)
-- Radar events (auto-detected blocks, silent drops)
-
-### Settings
-- DNS over HTTPS toggle + server URL
-- Theme: System / Light / Dark
-- System tray: minimize to tray, close to tray, start minimized
+All of this is also available as scriptable, non-interactive commands (`limbo run`, `limbo add-profile ...`, etc.) — see [CLI Usage](#-cli-usage) below.
 
 ---
 
@@ -276,9 +274,7 @@ Config file: `%LOCALAPPDATA%\Limbo\config.json`
     "useDoH": true,
     "doHServer": "https://1.1.1.1/dns-query"
   },
-  "theme": "System",
-  "minimizeToTray": true,
-  "closeToTray": true,
+  "language": "English",
   "profiles": [
     {
       "domain": "*.discord.com",
@@ -323,8 +319,7 @@ Limbo runs parallel A + AAAA queries and prioritizes IPv6 addresses.
 | Bandwidth Monitoring | No | ✅ Real-time |
 | DNS Bypass | ⚠️ UDP redirect only (no DoH) | ✅ DNS over HTTPS (DoH) |
 | SIMD Acceleration | No | ✅ AVX2 |
-| GUI | No | ✅ Dark/Light WPF |
-| CLI | ✅ Yes | ✅ Yes |
+| CLI | ✅ Yes | ✅ Interactive + scriptable |
 | Language | C (C99) | C# (.NET 10) |
 | Platform | Windows | Windows |
 | License | Apache 2.0 | GPL v2 |
@@ -344,13 +339,16 @@ Limbo is **inspired by GoodbyeDPI** but approaches the problem differently: inst
 - [x] Per-domain profiles with wildcard support
 - [x] Automatic calibration per domain
 - [x] Profile import / export (JSON)
-- [x] System tray support
 - [x] Real-time bandwidth monitoring
 - [x] DNS over HTTPS (parallel A + AAAA)
 - [x] SIMD (AVX2) packet parsing
-- [x] Dark / Light / System theme
+- [x] Interactive console (Spectre.Console) with live traffic dashboard
+- [x] English / Turkish language switch
+- [x] Network Analysis — ISP identification + live DNS tampering/RST injection/silent drop scan
+- [x] Calibration actually applies each strategy live (scoped capture), not simulated
+- [x] Configurable default method for Radar auto-detected domains
 - [x] Full CLI (run, calibrate, test, radar, add/remove-profile)
-- [x] 48 unit tests
+- [x] Unit test suite + CI (build & test on every push/PR)
 
 
 ---

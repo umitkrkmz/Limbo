@@ -87,9 +87,10 @@ WinDivert32.sys
 
 # ─── User / runtime data (stored in %LOCALAPPDATA%\Limbo\) ───────────────────
 # These are persisted locally per user and should not be committed
+# Anchored to repo root so it can't accidentally match src/Limbo.Core/Profiles/
 config.json
 Auto-Blacklist.txt
-profiles/
+/profiles/
 
 # ─── Sensitive / secrets ─────────────────────────────────────────────────────
 *.env
