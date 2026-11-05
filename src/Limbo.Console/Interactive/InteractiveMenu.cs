@@ -22,8 +22,7 @@ internal static class InteractiveMenu
         while (true)
         {
             InteractiveUi.SafeClear();
-            InteractiveUi.WriteHeader(Loc.T("main_menu.subtitle"));
-            WriteStatusPanel(config);
+            InteractiveUi.WriteHeader(Loc.T("main_menu.subtitle"), BuildStatusPanel(config));
 
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -86,7 +85,7 @@ internal static class InteractiveMenu
         }
     }
 
-    private static void WriteStatusPanel(LimboConfig config)
+    internal static Table BuildStatusPanel(LimboConfig config)
     {
         var isAdmin = SystemStatus.IsAdministrator();
         var netInfo = SystemStatus.GetPrimaryInterfaceDns();
@@ -116,8 +115,7 @@ internal static class InteractiveMenu
             table.AddRow(Loc.T("status.update"), $"[yellow]{Loc.T("status.update_value", update.LatestTag.EscapeMarkup())}[/]");
         }
 
-        AnsiConsole.Write(table);
-        AnsiConsole.WriteLine();
+        return table;
     }
 
     private static async Task RunCalibration(LimboConfig config, LimboLogger logger)

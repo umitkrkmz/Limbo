@@ -1,4 +1,5 @@
 using Spectre.Console;
+using Spectre.Console.Rendering;
 
 namespace Limbo.Console.Interactive;
 
@@ -34,14 +35,19 @@ internal static class InteractiveUi
          |______|_|_| |_| |_|_.__/ \___/
         """;
 
-    public static void WriteHeader(string subtitle)
+    private static Panel LogoPanel() => new Panel(Logo)
+        .Border(BoxBorder.Rounded)
+        .BorderColor(Color.SteelBlue1)
+        .Header($" {AppInfo.VersionText} ")
+        .Padding(2, 0);
+
+    /// <param name="beside">
+    /// Rendered to the right of the logo rather than below it, so the main menu fits a
+    /// default 30-row console window; Columns wraps it below when the window is too narrow.
+    /// </param>
+    public static void WriteHeader(string subtitle, IRenderable? beside = null)
     {
-        var panel = new Panel(Logo)
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.SteelBlue1)
-            .Header($" {AppInfo.VersionText} ")
-            .Padding(2, 0);
-        AnsiConsole.Write(panel);
+        AnsiConsole.Write(beside == null ? LogoPanel() : new Columns(LogoPanel(), beside) { Expand = false });
         AnsiConsole.MarkupLine($"[bold]{subtitle.EscapeMarkup()}[/]");
         AnsiConsole.WriteLine();
     }
@@ -49,12 +55,7 @@ internal static class InteractiveUi
     /// <summary>One-shot logo print for non-interactive CLI command output (no subtitle/status panel).</summary>
     public static void WriteHeaderNonInteractive()
     {
-        var panel = new Panel(Logo)
-            .Border(BoxBorder.Rounded)
-            .BorderColor(Color.SteelBlue1)
-            .Header($" {AppInfo.VersionText} ")
-            .Padding(2, 0);
-        AnsiConsole.Write(panel);
+        AnsiConsole.Write(LogoPanel());
         AnsiConsole.WriteLine();
     }
 

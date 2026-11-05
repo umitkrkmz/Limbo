@@ -20,6 +20,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - **License changed from GPL v2 to GPL v3 or later (`GPL-3.0-or-later`).** The previous rationale ("GPL v2 for compatibility with WinDivert") never required v2: WinDivert is dual-licensed LGPL v3 / GPL v2, and its LGPL v3 option is compatible with GPL v3; Spectre.Console and BouncyCastle (MIT) are compatible with both. GPL v3 adds an explicit patent license, a 30-day cure period after a violation, and simpler source-distribution rules. v1.0.0 and v1.1.0 remain available under GPL v2. `LICENSE` now holds the verbatim GPL v3 text from gnu.org
 - **Release workflow:** checks that the pushed tag matches `<Version>` in `Limbo.Console.csproj`, publishes via the new profile, fails if any expected file is missing from the package, attaches a `.sha256` file next to the ZIP, and creates a **draft** release to review before publishing (`-rc`-style tags become pre-releases). `actions/checkout` and `actions/setup-dotnet` bumped to v5 in both workflows (v4 ran on the deprecated Node 20)
+- Interactive main menu: the status panel now sits beside the logo instead of below it (wrapping below only in narrow windows), so the whole screen fits a default 30-row console window; previously the top of the logo scrolled out of view
 - Project version bumped to 1.1.0 in all csproj files (they still said 1.0.0; v1.1.0's exe only got its version from a workflow override) and copyright updated to 2025-2026
 
 ### Fixed
