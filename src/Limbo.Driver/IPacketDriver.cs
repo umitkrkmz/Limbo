@@ -25,7 +25,20 @@ public interface IPacketDriver : IDisposable
     /// Send/reinject a packet
     /// </summary>
     bool Send(ReadOnlySpan<byte> packet, bool recalcChecksum);
-    
+
+    /// <summary>
+    /// Metadata of the most recently received packet; overwritten by the next Receive.
+    /// </summary>
+    PacketAddress LastAddress { get; }
+
+    /// <summary>
+    /// Send using a previously captured address instead of the latest one (checksums
+    /// are always recalculated). With <paramref name="asInboundReply"/>, the packet is
+    /// injected towards this machine as if it arrived on the interface the captured
+    /// packet left through - i.e. a reply to that outbound packet.
+    /// </summary>
+    bool Send(ReadOnlySpan<byte> packet, PacketAddress address, bool asInboundReply);
+
     /// <summary>
     /// Whether the driver is currently open
     /// </summary>

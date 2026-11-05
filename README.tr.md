@@ -29,7 +29,7 @@ Limbo, yeni nesil bir DPI (Deep Packet Inspection / Derin Paket İncelemesi) byp
 - **ISP Davranış Analizi** — RST enjeksiyonu, sessiz paket düşürme, DNS zehirlenmesi tespiti
 - **Otomatik Kalibrasyon** — Her stratejiyi taramalı bir canlı yakalama üzerinden gerçekten uygulayarak alan adı için ne işe yaradığını bulur, simülasyon değil
 - **SIMD Optimizasyonu** — AVX2 hızlandırmalı paket ayrıştırma
-- **DNS over HTTPS** — ISP DNS engellemesini atlatma
+- **DNS over HTTPS** — Motor çalışırken tüm uygulamaların DNS sorgularını (IPv4 + IPv6) şifreli DoH ile cevaplar; İSS'nin DNS zehirlemesini sistem ayarlarını değiştirmeden aşar
 - **İnteraktif Konsol** — Spectre.Console tabanlı, canlı trafik paneline sahip menü + betiklenebilir CLI
 
 ---
@@ -326,12 +326,21 @@ Config dosyası: `%LOCALAPPDATA%\Limbo\config.json`
 
 ## 🌐 DNS over HTTPS
 
-Desteklenen sunucular:
-- Cloudflare: `https://1.1.1.1/dns-query`
+İSS **DNS'i de zehirliyorsa** SNI'yi gizlemek yetmez: engelli bir alan adı engelleme sayfasının adresine çözümlenir (Türk Telekom `discord.com` için `195.175.254.2` döndürür) ve el sıkışma nasıl gizlenirse gizlensin bağlantı yanlış sunucuya gider.
+
+DoH açıkken (yeni config'lerde varsayılan), motor çalıştığı sürece Limbo **tüm uygulamaların düz DNS sorgularını** (UDP 53, **IPv4 ve IPv6**) yakalar ve ağa çıkmalarına izin vermeden şifreli DNS-over-HTTPS üzerinden cevaplar:
+
+- **Sistem ayarlarına dokunulmaz.** Limbo durduğunda ya da kaldırıldığında geri alınacak bir şey kalmaz.
+- **IPv6 da kapsanır.** Sık görülen bir tuzak: Windows'ta "şifreli DNS" yalnızca IPv4 için ayarlıdır, modem ise IPv6 üzerinden kendi DNS sunucusunu dağıtır ve sorgular sessizce zehirli olan o yoldan gider. Limbo ikisini de cevaplar.
+- **Genel DNS sunucularına düz DNS'in engellendiği hatlarda da çalışır.** Bazı İSS'ler `1.1.1.1`'e giden UDP 53'ü düşürür; DoH ise HTTPS (443) üzerinden gider.
+- **Güvenli şekilde geri çekilir:** DoH sunucusuna ulaşılamazsa asıl sorgu olduğu gibi gönderilir; DNS çalışmaya devam eder, sadece korumasız. Canlı panel kaç sorgunun DoH ile cevaplandığını, kaçının düz DNS'e döndüğünü gösterir.
+
+Desteklenen sunucular (her RFC 8484 sunucusu çalışır; sunucu destekliyorsa HTTP/2 kullanılır):
+- Cloudflare: `https://1.1.1.1/dns-query` (varsayılan; IP adresi olduğu için kendi adını çözümlemeye ihtiyaç duymaz)
 - Google: `https://dns.google/dns-query`
 - Quad9: `https://dns.quad9.net/dns-query`
 
-Limbo, paralel A + AAAA sorguları çalıştırır ve IPv6 adreslerine öncelik verir.
+> Bunun için motorun WinDivert filtresinin UDP'yi içermesi gerekir (varsayılan `tcp or udp` içerir). Kendi DNS'ini zaten şifreleyen DoH açık tarayıcılar her iki durumda da etkilenmez.
 
 ---
 
@@ -346,7 +355,7 @@ Limbo, paralel A + AAAA sorguları çalıştırır ve IPv6 adreslerine öncelik 
 | ISP Davranış Analizi | Yok | ✅ RST enjeksiyonu, sessiz düşürmeler |
 | Otomatik Kalibrasyon | Yok | ✅ Alan adı başına |
 | Bant Genişliği İzleme | Yok | ✅ Gerçek zamanlı |
-| DNS Bypass | ⚠️ Sadece UDP yönlendirme (DoH yok) | ✅ DNS over HTTPS (DoH) |
+| DNS Bypass | ✅ UDP DNS'i başka bir sunucu/porta yönlendirir (`--dns-addr`, şifresiz) | ✅ Tüm uygulamaların DNS'ini (IPv4 + IPv6) şifreli DoH ile cevaplar |
 | SIMD Hızlandırma | Yok | ✅ AVX2 |
 | CLI | ✅ Var | ✅ İnteraktif + betiklenebilir |
 | Dil | C (C99) | C# (.NET 10) |

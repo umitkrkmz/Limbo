@@ -15,6 +15,10 @@
     <Copyright>Copyright © 2025-2026 Umit Korkmaz</Copyright>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Limbo.Tests" />
+  </ItemGroup>
+
   <!--
     Kept out of single-file bundles: WinDivert.dll loads WinDivert64.sys from its
     own directory, and a kernel driver has to exist as a real file on disk - not

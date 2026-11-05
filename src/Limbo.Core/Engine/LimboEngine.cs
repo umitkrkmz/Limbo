@@ -13,7 +13,7 @@ namespace Limbo.Core.Engine;
 /// Main Limbo engine that orchestrates DPI bypass: owns the packet capture
 /// loop against an <see cref="IPacketDriver"/>, profile lookup, bypass
 /// strategy application, Radar auto-detection, connection/bandwidth
-/// tracking, and DoH pre-resolution.
+/// tracking, and (with DoH enabled) answering system DNS queries over DoH.
 /// </summary>
 public class LimboEngine : IDisposable
 {
@@ -28,7 +28,7 @@ public class LimboEngine : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly object _lock = new();
 
-    private DoHResolver? _dohResolver;
+    private DnsInterceptor? _dnsInterceptor;
     private DnsSettings? _dnsSettings;
 
     private IPacketDriver? _driver;
@@ -165,66 +165,25 @@ public class LimboEngine : IDisposable
     }
 
     /// <summary>
-    /// Start the engine with DoH pre-resolution for profile domains
+    /// Start the engine; with DoH enabled, plain DNS queries from any app are
+    /// answered over DoH while it runs (see <see cref="DnsInterceptor"/>).
     /// </summary>
-    public async Task StartAsync(IPacketDriver driver, string filter = "tcp or udp")
+    public Task StartAsync(IPacketDriver driver, string filter = "tcp or udp")
     {
-        // Pre-resolve domains using DoH if enabled
         if (_dnsSettings?.UseDoH == true)
         {
-            await PreResolveDomains();
+            var serverUrl = string.IsNullOrEmpty(_dnsSettings.DoHServer)
+                ? "https://1.1.1.1/dns-query"
+                : _dnsSettings.DoHServer;
+
+            _dnsInterceptor = new DnsInterceptor(serverUrl);
+            _dnsInterceptor.OnLog += msg => OnLog?.Invoke(msg);
+            OnLog?.Invoke($"[DNS] Answering system DNS queries (IPv4 + IPv6) via DoH: {serverUrl}");
         }
 
         Start(driver, filter);
+        return Task.CompletedTask;
     }
-
-    /// <summary>
-    /// Pre-resolve all profile domains using DoH
-    /// </summary>
-    private async Task PreResolveDomains()
-    {
-        if (_dnsSettings == null || !_dnsSettings.UseDoH)
-            return;
-
-        var serverUrl = string.IsNullOrEmpty(_dnsSettings.DoHServer)
-            ? "https://cloudflare-dns.com/dns-query"
-            : _dnsSettings.DoHServer;
-
-        OnLog?.Invoke($"[DoH] Initializing resolver with: {serverUrl}");
-        _dohResolver = new DoHResolver(serverUrl);
-        _dohResolver.OnLog += msg => OnLog?.Invoke(msg);
-
-        var profiles = _profileManager.GetAllProfiles();
-        var domains = profiles
-            .Select(p => p.Domain)
-            .Where(d => !d.StartsWith("*")) // Skip wildcards
-            .Distinct()
-            .ToList();
-
-        if (domains.Count == 0)
-        {
-            OnLog?.Invoke("[DoH] No domains to pre-resolve");
-            return;
-        }
-
-        OnLog?.Invoke($"[DoH] Pre-resolving {domains.Count} domain(s)...");
-
-        try
-        {
-            var results = await _dohResolver.ResolveBulkAsync(domains, _cts.Token);
-            var resolved = results.Count(r => r.Value.Length > 0);
-            OnLog?.Invoke($"[DoH] Pre-resolution complete: {resolved}/{domains.Count} resolved");
-        }
-        catch (Exception ex)
-        {
-            OnLog?.Invoke($"[DoH] Pre-resolution error: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Get the DoH resolver (for testing DNS resolution)
-    /// </summary>
-    public DoHResolver? DohResolver => _dohResolver;
 
     /// <summary>
     /// Process a single packet and return modified packet(s) if needed
@@ -281,8 +240,12 @@ public class LimboEngine : IDisposable
                 }
 
                 var packet = buffer.AsSpan(0, length);
-                var context = PacketInspector.Analyze(packet, isOutbound);
                 _bandwidthMonitor.RecordBytes(length, !isOutbound);
+
+                if (_dnsInterceptor != null && _dnsInterceptor.TryIntercept(packet, driver.LastAddress, driver))
+                    continue;
+
+                var context = PacketInspector.Analyze(packet, isOutbound);
 
                 if (!isOutbound)
                 {
@@ -354,7 +317,9 @@ public class LimboEngine : IDisposable
         PacketsModified = Interlocked.Read(ref _packetsModified),
         BytesProcessed = Interlocked.Read(ref _bytesProcessed),
         MatchedPackets = Interlocked.Read(ref _matchedPackets),
-        ProfileCount = _profileManager.GetAllProfiles().Count
+        ProfileCount = _profileManager.GetAllProfiles().Count,
+        DnsAnsweredViaDoH = _dnsInterceptor?.AnsweredViaDoH ?? 0,
+        DnsFellBackToPlain = _dnsInterceptor?.FellBackToPlainDns ?? 0
     };
 
     public void Stop()
@@ -371,7 +336,7 @@ public class LimboEngine : IDisposable
 
         Stop();
         _tracker.Dispose();
-        _dohResolver?.Dispose();
+        _dnsInterceptor?.Dispose();
         _cts.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -387,4 +352,6 @@ public readonly struct EngineStats
     public required long BytesProcessed { get; init; }
     public required long MatchedPackets { get; init; }
     public required int ProfileCount { get; init; }
+    public long DnsAnsweredViaDoH { get; init; }
+    public long DnsFellBackToPlain { get; init; }
 }

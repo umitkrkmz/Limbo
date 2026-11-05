@@ -102,6 +102,23 @@ public class WinDivertDriver : IPacketDriver
             ref _lastAddress);
     }
 
+    public PacketAddress LastAddress => new(_lastAddress);
+
+    public bool Send(ReadOnlySpan<byte> packet, PacketAddress address, bool asInboundReply)
+    {
+        if (!IsOpen)
+            return false;
+
+        // A local copy: this runs off the capture thread, so it must not touch _lastAddress.
+        var addr = address.Raw;
+        if (asInboundReply)
+            addr.Outbound = false;
+
+        var mutablePacket = packet.ToArray();
+        WinDivertNative.WinDivertHelperCalcChecksums(mutablePacket, (uint)mutablePacket.Length, ref addr, 0);
+        return WinDivertNative.WinDivertSend(_handle, mutablePacket, (uint)mutablePacket.Length, out _, ref addr);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

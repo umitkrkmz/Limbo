@@ -140,6 +140,7 @@ internal static class Loc
         ["dns.not_found"] = ("(not found)", "(bulunamadı)"),
         ["dns.doh"] = ("DNS over HTTPS", "DNS over HTTPS"),
         ["dns.server"] = ("DoH Server", "DoH Sunucusu"),
+        ["dns.doh_note"] = ("With DoH on, while the engine runs every app's DNS queries (IPv4 and IPv6) are answered over this encrypted server, so the ISP can't poison them. System DNS settings aren't changed; if the server is unreachable, normal DNS is used.", "DoH açıkken motor çalıştığı sürece tüm uygulamaların DNS sorguları (IPv4 ve IPv6) bu şifreli sunucu üzerinden cevaplanır, İSS zehirleyemez. Sistem DNS ayarlarına dokunulmaz; sunucuya ulaşılamazsa normal DNS kullanılır."),
         ["dns.prompt"] = ("What would you like to do?", "Ne yapmak istersiniz?"),
         ["dns.toggle"] = ("Toggle DoH", "DoH Aç/Kapa"),
         ["dns.pick_provider"] = ("Choose Provider", "Sağlayıcı Seç"),

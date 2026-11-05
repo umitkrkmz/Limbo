@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text.Json;
 
 namespace Limbo.Core.Dns;
 
@@ -32,6 +31,43 @@ public class DoHResolver : IDisposable
         };
     }
 
+    public string ServerUrl => _serverUrl;
+
+    // HTTP/2 when the server offers it: some DoH servers (Quad9) reject HTTP/1.1
+    // outright, and one multiplexed connection suits a stream of small queries.
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string url) => new(method, url)
+    {
+        Version = System.Net.HttpVersion.Version20,
+        VersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+    };
+
+    /// <summary>
+    /// Sends a DNS message in wire format (RFC 8484 POST, application/dns-message) and
+    /// returns the wire-format response, or null on any failure. Any query type works -
+    /// nothing is parsed or re-encoded.
+    /// </summary>
+    public async Task<byte[]?> QueryWireAsync(ReadOnlyMemory<byte> query, CancellationToken ct = default)
+    {
+        try
+        {
+            using var content = new ReadOnlyMemoryContent(query);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/dns-message");
+            using var request = CreateRequest(HttpMethod.Post, _serverUrl);
+            request.Content = content;
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dns-message"));
+
+            using var response = await _httpClient.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsByteArrayAsync(ct);
+            return body.Length >= 12 ? body : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// Resolve a domain to IPv4 addresses using DoH
     /// </summary>
@@ -51,8 +87,8 @@ public class DoHResolver : IDisposable
         try
         {
             // Start both A and AAAA queries in parallel for maximum speed
-            var ipv4Task = FetchRecordsAsync(domain, "A", ct);
-            var ipv6Task = FetchRecordsAsync(domain, "AAAA", ct);
+            var ipv4Task = FetchRecordsAsync(domain, DnsMessage.TypeA, ct);
+            var ipv6Task = FetchRecordsAsync(domain, DnsMessage.TypeAaaa, ct);
 
             await Task.WhenAll(ipv4Task, ipv6Task);
 
@@ -85,36 +121,10 @@ public class DoHResolver : IDisposable
     /// <summary>
     /// Helper method to fetch specific record types from the DoH server.
     /// </summary>
-    private async Task<IPAddress[]> FetchRecordsAsync(string domain, string type, CancellationToken ct)
+    private async Task<IPAddress[]> FetchRecordsAsync(string domain, ushort type, CancellationToken ct)
     {
-        try
-        {
-            var url = $"{_serverUrl}?name={Uri.EscapeDataString(domain)}&type={type}";
-            
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dns-json"));
-
-            var response = await _httpClient.SendAsync(request, ct);
-            if (!response.IsSuccessStatusCode) return [];
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var result = JsonSerializer.Deserialize<DoHResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (result?.Answer == null) return [];
-
-            var targetType = type == "A" ? 1 : 28; // 1 for IPv4, 28 for IPv6 (AAAA)
-
-            return result.Answer
-                .Where(a => a.Type == targetType)
-                .Select(a => IPAddress.TryParse(a.Data, out var ip) ? ip : null)
-                .Where(ip => ip != null)
-                .Cast<IPAddress>()
-                .ToArray();
-        }
-        catch
-        {
-            return [];
-        }
+        var response = await QueryWireAsync(DnsMessage.BuildQuery(domain, type), ct);
+        return response == null ? [] : DnsMessage.ReadAddresses(response, type).Addresses;
     }
 
     /// <summary>
@@ -123,45 +133,19 @@ public class DoHResolver : IDisposable
     public async Task<IPAddress[]> ResolveIPv6Async(string domain, bool useCache = true, CancellationToken ct = default)
     {
         var cacheKey = $"{domain}:AAAA";
-        
+
         if (useCache)
         {
             var cached = _cache.Get(cacheKey);
             if (cached != null) return cached;
         }
 
-        try
-        {
-            var url = $"{_serverUrl}?name={Uri.EscapeDataString(domain)}&type=AAAA";
+        var response = await QueryWireAsync(DnsMessage.BuildQuery(domain, DnsMessage.TypeAaaa), ct);
+        if (response == null) return [];
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dns-json"));
-
-            var response = await _httpClient.SendAsync(request, ct);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var result = JsonSerializer.Deserialize<DoHResponse>(json);
-
-            if (result?.Answer == null || result.Answer.Length == 0)
-                return [];
-
-            var addresses = result.Answer
-                .Where(a => a.Type == 28) // AAAA record
-                .Select(a => IPAddress.TryParse(a.Data, out var ip) ? ip : null)
-                .Where(ip => ip != null)
-                .Cast<IPAddress>()
-                .ToArray();
-
-            var ttl = result.Answer.FirstOrDefault()?.TTL ?? 300;
-            _cache.Set(cacheKey, addresses, ttl);
-
-            return addresses;
-        }
-        catch
-        {
-            return [];
-        }
+        var (addresses, ttl) = DnsMessage.ReadAddresses(response, DnsMessage.TypeAaaa);
+        if (addresses.Length > 0) _cache.Set(cacheKey, addresses, ttl);
+        return addresses;
     }
 
     /// <summary>
@@ -233,18 +217,4 @@ public class DoHResolver : IDisposable
         _disposed = true;
         _httpClient.Dispose();
     }
-}
-
-internal class DoHResponse
-{
-    public int Status { get; set; }
-    public DoHAnswer[]? Answer { get; set; }
-}
-
-internal class DoHAnswer
-{
-    public string Name { get; set; } = "";
-    public int Type { get; set; }
-    public int TTL { get; set; }
-    public string Data { get; set; } = "";
 }

@@ -39,6 +39,7 @@ internal static class DnsMenu
             if (config.Dns.UseDoH)
                 table.AddRow(Loc.T("dns.server"), config.Dns.DoHServer.EscapeMarkup());
             AnsiConsole.Write(table);
+            AnsiConsole.MarkupLine($"[grey]{Loc.T("dns.doh_note")}[/]");
             AnsiConsole.WriteLine();
 
             var choice = AnsiConsole.Prompt(

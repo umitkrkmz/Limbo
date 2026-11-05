@@ -48,6 +48,11 @@ internal static class RunCommand
         engine.OnLog += msg => logger.Info(msg);
         engine.ConfigureDns(config.Dns);
 
+        if (!config.Dns.UseDoH)
+        {
+            AnsiConsole.MarkupLine("[grey]DNS over HTTPS is off: other apps' DNS queries go out as-is. If your ISP poisons DNS (e.g. discord.com -> a block page), turn it on in DNS Settings.[/]");
+        }
+
         if (!config.EnableRadar)
         {
             logger.Info("[RADAR] Adaptive engine disabled - auto-detection off (manual profiles only)");
@@ -81,33 +86,33 @@ internal static class RunCommand
         System.Console.CancelKeyPress += cancelHandler;
 
         await engine.StartAsync(driver, config.Filter);
-        await RenderLiveDashboard(engine);
+        await RenderLiveDashboard(engine, config.Dns.UseDoH);
 
         System.Console.CancelKeyPress -= cancelHandler;
 
-        PrintFinalStats(engine);
+        PrintFinalStats(engine, config.Dns.UseDoH);
 
         return 0;
     }
 
-    private static async Task RenderLiveDashboard(LimboEngine engine)
+    private static async Task RenderLiveDashboard(LimboEngine engine, bool dohEnabled)
     {
-        await AnsiConsole.Live(BuildStatsTable(engine))
+        await AnsiConsole.Live(BuildStatsTable(engine, dohEnabled))
             .StartAsync(async ctx =>
             {
                 while (engine.IsRunning)
                 {
-                    ctx.UpdateTarget(BuildStatsTable(engine));
+                    ctx.UpdateTarget(BuildStatsTable(engine, dohEnabled));
                     ctx.Refresh();
                     await Task.Delay(300);
                 }
 
-                ctx.UpdateTarget(BuildStatsTable(engine));
+                ctx.UpdateTarget(BuildStatsTable(engine, dohEnabled));
                 ctx.Refresh();
             });
     }
 
-    private static Table BuildStatsTable(LimboEngine engine)
+    private static Table BuildStatsTable(LimboEngine engine, bool dohEnabled)
     {
         var stats = engine.GetStats();
         var bw = engine.Bandwidth.GetStats();
@@ -119,6 +124,7 @@ internal static class RunCommand
         table.AddColumn("Data");
         table.AddColumn("Download");
         table.AddColumn("Upload");
+        table.AddColumn("DNS via DoH");
 
         table.AddRow(
             DateTime.Now.ToString("HH:mm:ss"),
@@ -127,12 +133,21 @@ internal static class RunCommand
             stats.PacketsModified.ToString(),
             CommandHelpers.FormatBytes(stats.BytesProcessed),
             $"[green]↓ {BandwidthStats.FormatRate(bw.DownloadRate)}[/]",
-            $"[cyan]↑ {BandwidthStats.FormatRate(bw.UploadRate)}[/]");
+            $"[cyan]↑ {BandwidthStats.FormatRate(bw.UploadRate)}[/]",
+            FormatDns(stats, dohEnabled));
 
         return table;
     }
 
-    private static void PrintFinalStats(LimboEngine engine)
+    private static string FormatDns(EngineStats stats, bool dohEnabled)
+    {
+        if (!dohEnabled) return "[grey]off[/]";
+        return stats.DnsFellBackToPlain == 0
+            ? stats.DnsAnsweredViaDoH.ToString()
+            : $"{stats.DnsAnsweredViaDoH} [yellow]({stats.DnsFellBackToPlain} plain)[/]";
+    }
+
+    private static void PrintFinalStats(LimboEngine engine, bool dohEnabled)
     {
         var stats = engine.GetStats();
         var bw = engine.Bandwidth.GetStats();
@@ -146,6 +161,7 @@ internal static class RunCommand
         table.AddRow("Data Processed", CommandHelpers.FormatBytes(stats.BytesProcessed));
         table.AddRow("Peak Download", BandwidthStats.FormatRate(bw.PeakDownload));
         table.AddRow("Peak Upload", BandwidthStats.FormatRate(bw.PeakUpload));
+        table.AddRow("DNS answered via DoH", FormatDns(stats, dohEnabled));
         AnsiConsole.Write(table);
 
         var allBlacklisted = engine.AutoBlacklist.GetAllBlacklisted();

@@ -29,7 +29,7 @@ Limbo is a next-generation DPI (Deep Packet Inspection) bypass engine featuring:
 - **ISP Behavior Analysis** — Detects RST injection, silent drops, DNS poisoning
 - **Automatic Calibration** — Actually applies each strategy through a scoped live capture to find what really works per domain, not a simulation
 - **SIMD Optimization** — AVX2-accelerated packet parsing
-- **DNS over HTTPS** — Bypass ISP DNS blocking
+- **DNS over HTTPS** — Answers every app's DNS queries (IPv4 + IPv6) over encrypted DoH while the engine runs, defeating ISP DNS poisoning without changing system settings
 - **Interactive Console** — Spectre.Console-powered menu with live traffic dashboard, plus a scriptable CLI
 
 ---
@@ -326,12 +326,21 @@ Config file: `%LOCALAPPDATA%\Limbo\config.json`
 
 ## 🌐 DNS over HTTPS
 
-Supported servers:
-- Cloudflare: `https://1.1.1.1/dns-query`
+Hiding the SNI isn't enough when the ISP also **poisons DNS**: a blocked domain then resolves to a block-page address (Türk Telekom answers `discord.com` with `195.175.254.2`), and the connection goes to the wrong server no matter how the handshake is disguised.
+
+With DoH on (the default for new configs), while the engine runs Limbo catches **every app's plain DNS query** (UDP 53, over **IPv4 and IPv6**) and answers it over encrypted DNS-over-HTTPS instead of letting it reach the network:
+
+- **No system settings are touched**, so there's nothing to undo when Limbo stops or is uninstalled.
+- **IPv6 is covered too.** A common trap: Windows' "encrypted DNS" set for IPv4 only, while the router hands out its own IPv6 DNS server, and queries quietly go through that one, poisoned. Limbo answers both.
+- **Works where plain DNS to public resolvers is blocked.** Some ISPs drop UDP 53 to `1.1.1.1`; DoH runs over HTTPS (port 443).
+- **Fails safe:** if the DoH server can't be reached, the original query goes out unchanged, so DNS keeps working, just unprotected. The live dashboard shows how many queries were answered via DoH and how many fell back to plain DNS.
+
+Supported servers (any RFC 8484 server works; HTTP/2 is used when offered):
+- Cloudflare: `https://1.1.1.1/dns-query` (default; an IP address, so it needs no DNS lookup of its own)
 - Google: `https://dns.google/dns-query`
 - Quad9: `https://dns.quad9.net/dns-query`
 
-Limbo runs parallel A + AAAA queries and prioritizes IPv6 addresses.
+> This needs the engine's WinDivert filter to include UDP (the default `tcp or udp` does). DoH-enabled browsers that already encrypt their own DNS aren't affected either way.
 
 ---
 
@@ -346,7 +355,7 @@ Limbo runs parallel A + AAAA queries and prioritizes IPv6 addresses.
 | ISP Behavior Analysis | No | ✅ RST injection, silent drops |
 | Automatic Calibration | No | ✅ Per domain |
 | Bandwidth Monitoring | No | ✅ Real-time |
-| DNS Bypass | ⚠️ UDP redirect only (no DoH) | ✅ DNS over HTTPS (DoH) |
+| DNS Bypass | ✅ Redirects UDP DNS to another resolver/port (`--dns-addr`, unencrypted) | ✅ Answers all apps' DNS (IPv4 + IPv6) over encrypted DoH |
 | SIMD Acceleration | No | ✅ AVX2 |
 | CLI | ✅ Yes | ✅ Interactive + scriptable |
 | Language | C (C99) | C# (.NET 10) |

@@ -83,9 +83,11 @@ public enum Language
 public class DnsSettings
 {
     /// <summary>
-    /// Use DNS over HTTPS
+    /// While the engine runs, answer every app's plain DNS queries (UDP 53, IPv4 and
+    /// IPv6) over DNS-over-HTTPS instead of letting the ISP resolve (and poison) them.
+    /// Falls back to plain DNS when the DoH server is unreachable.
     /// </summary>
-    public bool UseDoH { get; set; } = false;
+    public bool UseDoH { get; set; } = true;
 
     /// <summary>
     /// DoH server URL
@@ -230,7 +232,7 @@ public static class ConfigManager
             Verbose = false,
             Dns = new DnsSettings
             {
-                UseDoH = false,
+                UseDoH = true,
                 DoHServer = "https://1.1.1.1/dns-query"
             },
             Profiles =
