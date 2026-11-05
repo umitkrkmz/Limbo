@@ -17,6 +17,7 @@ internal static class InteractiveMenu
     public static async Task<int> RunAsync(LimboConfig config, LimboLogger logger)
     {
         Loc.Current = config.Language;
+        UpdateChecker.StartIfEnabled(config);
 
         while (true)
         {
@@ -37,6 +38,7 @@ internal static class InteractiveMenu
                         Loc.T("main_menu.calibrate"),
                         Loc.T("main_menu.test"),
                         Loc.T("main_menu.settings"),
+                        Loc.T("main_menu.about"),
                         Loc.T("main_menu.exit")));
 
             if (choice == Loc.T("main_menu.start_engine"))
@@ -73,6 +75,10 @@ internal static class InteractiveMenu
             {
                 ShowGeneralSettings(config);
             }
+            else if (choice == Loc.T("main_menu.about"))
+            {
+                AboutMenu.Show();
+            }
             else
             {
                 return 0;
@@ -105,6 +111,10 @@ internal static class InteractiveMenu
         table.AddRow(Loc.T("status.doh"), config.Dns.UseDoH ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]");
         table.AddRow(Loc.T("status.profile_count"), profileCount.ToString());
         table.AddRow(Loc.T("status.radar_count"), radarCount.ToString());
+        if (UpdateChecker.Available is { } update)
+        {
+            table.AddRow(Loc.T("status.update"), $"[yellow]{Loc.T("status.update_value", update.LatestTag.EscapeMarkup())}[/]");
+        }
 
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
@@ -152,6 +162,7 @@ internal static class InteractiveMenu
             table.AddRow(Loc.T("settings.verbose"), config.Verbose ? $"[green]{Loc.T("on")}[/]" : $"[grey]{Loc.T("off")}[/]");
             table.AddRow(Loc.T("settings.log_file"), string.IsNullOrEmpty(config.LogFile) ? $"[grey]{Loc.T("settings.log_file_none")}[/]" : config.LogFile.EscapeMarkup());
             table.AddRow(Loc.T("settings.language"), config.Language.ToString());
+            table.AddRow(Loc.T("settings.update_check"), config.CheckForUpdates ? $"[green]{Loc.T("on")}[/]" : $"[grey]{Loc.T("off")}[/]");
             table.AddRow(Loc.T("settings.config_file"), ConfigManager.GetDefaultPath().EscapeMarkup());
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
@@ -161,12 +172,20 @@ internal static class InteractiveMenu
                     .Title(Loc.T("settings.prompt"))
                     .AddChoices(
                         Loc.T("settings.toggle_verbose"), Loc.T("settings.set_log_file"),
-                        Loc.T("settings.change_language"), Loc.T("back")));
+                        Loc.T("settings.change_language"), Loc.T("settings.toggle_update_check"),
+                        Loc.T("back")));
 
             if (choice == Loc.T("settings.toggle_verbose"))
             {
                 config.Verbose = !config.Verbose;
                 ConfigManager.Save(config);
+            }
+            else if (choice == Loc.T("settings.toggle_update_check"))
+            {
+                config.CheckForUpdates = !config.CheckForUpdates;
+                ConfigManager.Save(config);
+                if (config.CheckForUpdates) UpdateChecker.StartIfEnabled(config);
+                else UpdateChecker.Stop();
             }
             else if (choice == Loc.T("settings.set_log_file"))
             {

@@ -282,7 +282,10 @@ Running `limbo` with no arguments opens a full interactive dashboard built on Sp
 - **Adaptive Engine (Radar)** — turn auto-detection on/off, choose which bypass method (and parameters) newly detected domains get, list/import/export/clear detections
 - **Network Analysis** — ISP/public IP identity plus an on-demand live scan for DNS tampering, RST injection, or silent dropping against a domain
 - **Calibration** and **Connection Test** — same checks as the CLI commands, with a progress bar / results table
-- **General Settings** — verbose logging, log file path, and **language** (English / Turkish)
+- **General Settings** — verbose logging, log file path, **language** (English / Turkish), and the update check
+- **About** — version, license, source link, bundled components, and update status (with a shortcut to the download page when a newer release exists)
+
+**Update check:** when the interactive menu opens, Limbo makes one anonymous request to the GitHub API (`api.github.com`) for the latest release. If a newer one exists, the status panel and the About screen say so; downloading and installing is always up to you, Limbo never updates itself. It's never made by scripted CLI commands, and can be turned off in **General Settings**. Beyond this, Limbo only contacts services as part of features you use: your configured DoH resolver, `ipinfo.io` when you open Network Analysis, and the domains you test or calibrate.
 
 All of this is also available as scriptable, non-interactive commands (`limbo run`, `limbo add-profile ...`, etc.) — see [CLI Usage](#-cli-usage) below.
 

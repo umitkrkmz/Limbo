@@ -24,6 +24,7 @@ internal static class ConfigCommands
         settings.AddRow("Adaptive Engine (Radar)", FormatBool(config.EnableRadar));
         settings.AddRow("Radar Default Method", config.DefaultMethodProfile.Method.ToString());
         settings.AddRow("Language", config.Language.ToString());
+        settings.AddRow("Update check (interactive menu)", FormatBool(config.CheckForUpdates));
         settings.AddRow("DNS over HTTPS", FormatBool(config.Dns.UseDoH));
         if (config.Dns.UseDoH)
             settings.AddRow("DoH Server", config.Dns.DoHServer.EscapeMarkup());

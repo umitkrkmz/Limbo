@@ -39,6 +39,7 @@ internal static class InteractiveUi
         var panel = new Panel(Logo)
             .Border(BoxBorder.Rounded)
             .BorderColor(Color.SteelBlue1)
+            .Header($" {AppInfo.VersionText} ")
             .Padding(2, 0);
         AnsiConsole.Write(panel);
         AnsiConsole.MarkupLine($"[bold]{subtitle.EscapeMarkup()}[/]");
@@ -51,6 +52,7 @@ internal static class InteractiveUi
         var panel = new Panel(Logo)
             .Border(BoxBorder.Rounded)
             .BorderColor(Color.SteelBlue1)
+            .Header($" {AppInfo.VersionText} ")
             .Padding(2, 0);
         AnsiConsole.Write(panel);
         AnsiConsole.WriteLine();

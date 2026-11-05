@@ -48,7 +48,9 @@ WinDivert requires elevation to open a capture handle. `run`, calibration's real
 - Don't add abstractions, config knobs, or error handling for scenarios that can't happen. Match the scope of a change to what was actually asked.
 - Test data isolation: never touch real `%LOCALAPPDATA%\Limbo\*` in a test. `ProfileManager`/`BlacklistManager` both accept a directory/path override for exactly this - see the `GetTempProfileDir()` pattern in `ProfileManagerTests.cs`/`LimboEngineTests.cs`.
 - **License: GPL-3.0-or-later.** Release packages are self-contained, so every NuGet package that ends up in `Limbo.Console.exe` is redistributed: adding, removing or upgrading one means updating `THIRD-PARTY-NOTICES.txt` (name, version, license, copyright notice). Version numbers live in each csproj's `<Version>`; the release workflow refuses a tag that doesn't match `Limbo.Console.csproj`, and `--version` reads the assembly version (`AppInfo.Version`) - don't hardcode it anywhere.
-- Tests that call a real external service (DoH, ipinfo.io) are acceptable but must tolerate no network access - see `DoHResolverTests.cs`/`IspIdentifierTests.cs`: assert on structure/validity when a result comes back, don't fail the suite if it's `null`/empty.
+- No unprompted network requests from scripted CLI commands. The update check (`UpdateChecker`) runs only from the interactive menu and honors `LimboConfig.CheckForUpdates`; keep any new "phone home" style request behind the same rules and document it in the README's update-check paragraph.
+- `Limbo.Tests` references `Limbo.Console` too (`InternalsVisibleTo`), for console-level logic such as `UpdateChecker`'s tag parsing.
+- Tests that call a real external service (DoH, ipinfo.io, GitHub API) are acceptable but must tolerate no network access - see `DoHResolverTests.cs`/`IspIdentifierTests.cs`: assert on structure/validity when a result comes back, don't fail the suite if it's `null`/empty.
 
 ## Sharp edges found the hard way this project
 

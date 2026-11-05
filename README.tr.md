@@ -282,7 +282,10 @@ limbo radar-import blocked.txt
 - **Adaptif Motor (Radar)** — otomatik tespiti aç/kapa, yeni tespit edilen alan adlarının hangi bypass yöntemini (ve parametrelerini) alacağını seçme, tespitleri listele/içe-dışa aktar/temizle
 - **Ağ Analizi** — ISS/genel IP kimliği + bir alan adı için DNS tamper, RST enjeksiyonu ya da sessiz düşürme arayan talep-üzerine canlı tarama
 - **Kalibrasyon** ve **Bağlantı Testi** — CLI komutlarıyla aynı kontroller, ilerleme çubuğu/sonuç tablosuyla
-- **Genel Ayarlar** — ayrıntılı loglama, log dosyası yolu, ve **dil** (İngilizce / Türkçe)
+- **Genel Ayarlar** — ayrıntılı loglama, log dosyası yolu, **dil** (İngilizce / Türkçe) ve güncelleme kontrolü
+- **Hakkında** — sürüm, lisans, kaynak kod bağlantısı, paketteki bileşenler ve güncelleme durumu (daha yeni bir sürüm varsa indirme sayfasına kısayol)
+
+**Güncelleme kontrolü:** interaktif menü açılırken Limbo, son sürümü öğrenmek için GitHub API'sine (`api.github.com`) anonim tek bir istek yapar. Daha yeni bir sürüm varsa durum paneli ve Hakkında ekranı bunu gösterir; indirme ve kurulum her zaman size kalır, Limbo kendini kendiliğinden güncellemez. Betiklenebilir CLI komutları bu isteği hiç yapmaz ve **Genel Ayarlar**'dan kapatılabilir. Bunun dışında Limbo yalnızca kullandığınız özellikler kapsamında servislere bağlanır: ayarladığınız DoH sunucusu, Ağ Analizi ekranını açtığınızda `ipinfo.io` ve test ya da kalibre ettiğiniz alan adları.
 
 Bunların hepsi betiklenebilir, interaktif olmayan komutlar olarak da mevcuttur (`limbo run`, `limbo add-profile ...` vb.) — aşağıdaki [CLI Kullanımı](#-cli-kullanımı) bölümüne bakın.
 

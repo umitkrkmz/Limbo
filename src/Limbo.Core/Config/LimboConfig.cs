@@ -59,6 +59,12 @@ public class LimboConfig
     /// manually configured profiles - it only turns off auto-detection.
     /// </summary>
     public bool EnableRadar { get; set; } = true;
+
+    /// <summary>
+    /// Look up the latest GitHub release when the interactive menu opens (one
+    /// anonymous request; never downloads or installs anything).
+    /// </summary>
+    public bool CheckForUpdates { get; set; } = true;
 }
 
 public enum Language

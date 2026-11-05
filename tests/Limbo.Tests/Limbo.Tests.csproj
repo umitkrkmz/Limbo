@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Limbo.Core\Limbo.Core.csproj" />
     <ProjectReference Include="..\..\src\Limbo.Driver\Limbo.Driver.csproj" />
+    <ProjectReference Include="..\..\src\Limbo.Console\Limbo.Console.csproj" />
   </ItemGroup>
 
 </Project>
