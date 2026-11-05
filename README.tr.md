@@ -184,9 +184,9 @@ dotnet publish src/Limbo.Console -p:PublishProfile=win-x64
 
 ```powershell
 # Inno Setup "herkes için" kurulduysa:
-& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 installer\Limbo.iss
 # Sadece kendi kullanıcınız için kurulduysa (ör. winget --scope user):
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 installer\Limbo.iss
 ```
 
 **Yeni sürüm yayınlamak:** üç csproj'daki `<Version>` değerini güncelleyin, CHANGELOG'a sürüm başlığını ekleyin, sonra `v` ile başlayan bir tag pushlayın (`git tag v1.2.0 && git push origin v1.2.0`). [Release iş akışı](.github/workflows/release.yml) tag'in sürümle uyuştuğunu kontrol eder, kurulum dosyasını ve taşınabilir ZIP'i SHA-256'larıyla birlikte derler ve **taslak (draft)** bir GitHub Release oluşturur; notları düzenleyip **Publish**'e basmak size kalır. `v1.2.0-rc.1` gibi ekli tag'ler pre-release olarak açılır.
@@ -419,7 +419,7 @@ Bu proje **GNU General Public License v3.0 veya sonraki bir sürümü** (`GPL-3.
 
 > Limbo, LGPL v3 / GPL v2 çift lisanslı [WinDivert](https://github.com/basil00/WinDivert)'i **LGPL v3** koşulları altında kullanır (LGPL v3, GPL v3 ile uyumludur).
 
-> **Önceki sürümler:** v1.0.0 ve v1.1.0 **GPL v2** ile yayımlanmıştır ve o sürümlerin kopyaları GPL v2 altında kalmaya devam eder. GPL v3'e geçiş bir sonraki sürümden itibaren geçerlidir.
+> **Önceki sürümler:** v1.0.0 ve v1.1.0 **GPL v2** ile yayımlanmıştır ve o sürümlerin kopyaları GPL v2 altında kalmaya devam eder. GPL v3'e geçiş v1.2.0'dan itibaren geçerlidir.
 
 Tam lisans metni için [LICENSE](LICENSE) dosyasına bakın. Release paketlerinde birlikte dağıtılan üçüncü taraf bileşenler (WinDivert, Spectre.Console, BouncyCastle, .NET runtime) ve lisansları [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) dosyasında listelenmiştir; bu dosya her release ZIP'inin içinde de bulunur.
 

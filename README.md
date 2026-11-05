@@ -184,9 +184,9 @@ Output lands in `src/Limbo.Console/bin/publish/win-x64/`.
 
 ```powershell
 # Inno Setup installed for all users:
-& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 installer\Limbo.iss
 # Installed for your user only (e.g. winget --scope user):
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.2.0 installer\Limbo.iss
 ```
 
 **Releasing:** bump `<Version>` in the three csproj files, add the version heading to the CHANGELOG, then push a `v`-prefixed tag (`git tag v1.2.0 && git push origin v1.2.0`). The [release workflow](.github/workflows/release.yml) checks the tag matches the version, builds the installer and the portable ZIP with their SHA-256s, and creates a **draft** GitHub Release; editing the notes and pressing **Publish** is up to you. Suffixed tags like `v1.2.0-rc.1` become pre-releases.
@@ -419,7 +419,7 @@ This project is licensed under the **GNU General Public License v3.0 or later** 
 
 > Limbo uses [WinDivert](https://github.com/basil00/WinDivert), which is dual-licensed under LGPL v3 / GPL v2; Limbo uses it under the **LGPL v3** terms, which are compatible with GPL v3.
 
-> **Earlier versions:** v1.0.0 and v1.1.0 were released under **GPL v2**, and copies of those versions remain available under GPL v2. The switch to GPL v3 applies from the next release on.
+> **Earlier versions:** v1.0.0 and v1.1.0 were released under **GPL v2**, and copies of those versions remain available under GPL v2. The switch to GPL v3 applies from v1.2.0 on.
 
 See [LICENSE](LICENSE) for the full license text. The third-party components bundled in release packages (WinDivert, Spectre.Console, BouncyCastle, the .NET runtime) and their licenses are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), which is also included in every release ZIP.
 

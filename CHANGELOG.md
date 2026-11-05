@@ -9,6 +9,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-05
+
 ### Added
 - **Redesigned interactive main menu + built-in "How to Use" guide.** The menu is grouped (Engine / Configuration / Tools / Limbo) with icons, "Start Engine" shows the mode it will use, and a new "Switch Mode" item toggles global mode in one step instead of through the Radar screen. The status panel is condensed to five rows (mode, admin, DoH + server, network/DNS, profiles/Radar) and sized to the golden ratio of the logo panel beside it (39 : 63 columns); duplicate DNS entries and IPv6 scope suffixes are no longer shown. "How to Use" covers quick start, the two modes, profiles and exclusions, DNS over HTTPS, and a general troubleshooting checklist (DNS tampering, overridden system DNS settings, IPv6, method, type of blocking) - in English and Turkish. The DNS Settings screen lists IPv4 and IPv6 DNS servers separately and warns when IPv6 DNS servers are active while DoH is off, since an IPv4-only DNS setting doesn't cover them. A test now checks that every interactive string is valid Spectre markup in both languages
 - **Global mode (GoodbyeDPI-style):** with `globalMode` on (Adaptive Engine (Radar) menu, config, or `limbo run --global` for one run), every HTTPS/HTTP connection without a profile gets the default method - the same template Radar applies to detected domains - instead of passing through untouched. Profiles still take priority, and a profile with method `None` excludes a site global mode breaks. The main status panel and `--show-config` show the mode. `ProfileManager.TryGetProfile` tells "no profile" apart from "profile with method None" for this
