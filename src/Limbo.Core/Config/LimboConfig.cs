@@ -247,6 +247,26 @@ public static class ConfigManager
                     Method = BypassMethod.TcpFragmentation,
                     FragmentSize = 2
                 },
+                // CDN/media (attachments, avatars, the updater) and voice servers -
+                // without these Discord logs in but images/updates/voice stay blocked.
+                new ProfileConfig
+                {
+                    Domain = "*.discordapp.com",
+                    Method = BypassMethod.TcpFragmentation,
+                    FragmentSize = 2
+                },
+                new ProfileConfig
+                {
+                    Domain = "*.discordapp.net",
+                    Method = BypassMethod.TcpFragmentation,
+                    FragmentSize = 2
+                },
+                new ProfileConfig
+                {
+                    Domain = "*.discord.media",
+                    Method = BypassMethod.TcpFragmentation,
+                    FragmentSize = 2
+                },
                 new ProfileConfig
                 {
                     Domain = "gateway.discord.com",

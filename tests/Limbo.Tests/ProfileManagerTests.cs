@@ -68,6 +68,29 @@ public class ProfileManagerTests
         }
     }
 
+    [Theory]
+    [InlineData("discord.com", BypassMethod.TcpFragmentation)]       // apex is covered by the wildcard
+    [InlineData("DISCORD.com", BypassMethod.TcpFragmentation)]
+    [InlineData("gateway.discord.com", BypassMethod.TcpFragmentation)]
+    [InlineData("notdiscord.com", BypassMethod.None)]                // no partial-label matches
+    [InlineData("discord.com.evil.test", BypassMethod.None)]
+    public void GetProfile_WildcardCoversApexButNotLookalikes(string domain, BypassMethod expected)
+    {
+        var tempDir = GetTempProfileDir();
+        try
+        {
+            var manager = new ProfileManager(tempDir);
+            manager.SaveProfile(new DomainProfile { Domain = "*.discord.com", Method = BypassMethod.TcpFragmentation });
+
+            Assert.Equal(expected, manager.GetProfile(domain).Method);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
     [Fact]
     public void GetProfile_NoMatch_ReturnsDefault()
     {

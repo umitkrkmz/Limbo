@@ -110,7 +110,11 @@ public class ProfileManager
                     continue;
 
                 var suffix = profile.Domain[1..]; // "*.example.com" -> ".example.com"
-                if (!domain.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                // "*.discord.com" also covers discord.com itself - the apex is usually
+                // the main host (Discord's API/login), and users write the wildcard meaning both.
+                var isSubdomain = domain.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
+                var isApex = domain.Equals(suffix[1..], StringComparison.OrdinalIgnoreCase);
+                if (!isSubdomain && !isApex)
                     continue;
 
                 if (suffix.Length > bestSuffixLength)
