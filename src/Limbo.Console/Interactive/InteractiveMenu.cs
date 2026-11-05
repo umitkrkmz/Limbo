@@ -163,7 +163,7 @@ internal static class InteractiveMenu
             table.AddRow(Loc.T("settings.log_file"), string.IsNullOrEmpty(config.LogFile) ? $"[grey]{Loc.T("settings.log_file_none")}[/]" : config.LogFile.EscapeMarkup());
             table.AddRow(Loc.T("settings.language"), config.Language.ToString());
             table.AddRow(Loc.T("settings.update_check"), config.CheckForUpdates ? $"[green]{Loc.T("on")}[/]" : $"[grey]{Loc.T("off")}[/]");
-            table.AddRow(Loc.T("settings.config_file"), ConfigManager.GetDefaultPath().EscapeMarkup());
+            table.AddRow(Loc.T("settings.config_file"), ConfigManager.GetPath(config).EscapeMarkup());
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
 

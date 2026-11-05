@@ -57,7 +57,7 @@ internal static class ProfileCommands
         AnsiConsole.MarkupLine($"  SplitOffset:    {splitOffset}");
         if (!string.IsNullOrEmpty(echName))
             AnsiConsole.MarkupLine($"  ECH PublicName: {echName.EscapeMarkup()}");
-        AnsiConsole.MarkupLine($"  Config saved to: {ConfigManager.GetDefaultPath().EscapeMarkup()}");
+        AnsiConsole.MarkupLine($"  Config saved to: {ConfigManager.GetPath(config).EscapeMarkup()}");
 
         return 0;
     }

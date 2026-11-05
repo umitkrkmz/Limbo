@@ -65,6 +65,13 @@ public class LimboConfig
     /// anonymous request; never downloads or installs anything).
     /// </summary>
     public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>
+    /// File this config was loaded from, so <see cref="ConfigManager.Save(LimboConfig)"/>
+    /// writes back to it (e.g. a `-c custom.json` config) instead of the default path.
+    /// </summary>
+    [JsonIgnore]
+    public string? SourcePath { get; set; }
 }
 
 public enum Language
@@ -164,31 +171,38 @@ public static class ConfigManager
     /// </summary>
     public static LimboConfig Load(string path)
     {
+        LimboConfig config;
         if (!File.Exists(path))
         {
-            var config = CreateDefault();
+            config = CreateDefault();
             Save(config, path);
-            return config;
+        }
+        else
+        {
+            try
+            {
+                var json = File.ReadAllText(path);
+                config = JsonSerializer.Deserialize<LimboConfig>(json, JsonOptions) ?? CreateDefault();
+            }
+            catch
+            {
+                config = CreateDefault();
+            }
         }
 
-        try
-        {
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<LimboConfig>(json, JsonOptions) ?? CreateDefault();
-        }
-        catch
-        {
-            return CreateDefault();
-        }
+        config.SourcePath = path;
+        return config;
     }
 
     /// <summary>
-    /// Save config to default path
+    /// Save config back to the file it was loaded from (default path if it wasn't loaded from one)
     /// </summary>
     public static void Save(LimboConfig config)
     {
-        Save(config, DefaultConfigPath);
+        Save(config, GetPath(config));
     }
+
+    public static string GetPath(LimboConfig config) => config.SourcePath ?? DefaultConfigPath;
 
     /// <summary>
     /// Save config to specified path
@@ -243,9 +257,4 @@ public static class ConfigManager
             StatsIntervalMs = 1000
         };
     }
-
-    /// <summary>
-    /// Get the default config file path
-    /// </summary>
-    public static string GetDefaultPath() => DefaultConfigPath;
 }

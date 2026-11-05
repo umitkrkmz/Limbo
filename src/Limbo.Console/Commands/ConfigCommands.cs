@@ -13,7 +13,7 @@ internal static class ConfigCommands
 {
     public static void ShowConfig(LimboConfig config)
     {
-        AnsiConsole.MarkupLine($"[grey]Config file:[/] {ConfigManager.GetDefaultPath().EscapeMarkup()}");
+        AnsiConsole.MarkupLine($"[grey]Config file:[/] {ConfigManager.GetPath(config).EscapeMarkup()}");
         AnsiConsole.WriteLine();
 
         var settings = new Table().Border(TableBorder.Rounded).HideHeaders();
