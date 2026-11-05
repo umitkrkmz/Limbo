@@ -213,7 +213,7 @@ public class LimboEngine : IDisposable
         Interlocked.Increment(ref _matchedPackets);
 
         // Apply bypass strategy
-        var results = _bypassEngine.ProcessPacket(packet, context, profile.Method);
+        var results = _bypassEngine.ProcessPacket(packet, context, profile);
 
         if (results.Count > 1 || (results.Count == 1 && results[0].RecalcChecksum))
         {

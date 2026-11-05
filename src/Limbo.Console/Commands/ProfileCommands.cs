@@ -28,6 +28,9 @@ internal static class ProfileCommands
         }
 
         var argList = args.Skip(2).ToList();
+        // Passing any parameter means "use exactly these"; adaptive params would ignore them.
+        string[] paramFlags = ["--frag", "--ttl", "--split", "--offset", "--quic-size", "--ech-name"];
+        var hasExplicitParams = argList.Any(paramFlags.Contains);
         var fragmentSize = CommandHelpers.GetIntArg(argList, "--frag", 2);
         var fakeTtl = CommandHelpers.GetIntArg(argList, "--ttl", 3);
         var splitPosition = CommandHelpers.GetIntArg(argList, "--split", 3);
@@ -45,7 +48,7 @@ internal static class ProfileCommands
             SplitOffset = splitOffset,
             FakePacketSize = quicSize,
             EchPublicName = echName,
-            UseAdaptiveParams = true
+            UseAdaptiveParams = !hasExplicitParams
         });
 
         ConfigManager.Save(config);

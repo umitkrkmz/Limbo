@@ -72,6 +72,37 @@ public class LimboEngineTests
         }
     }
 
+    // The engine used to call the method-only overload, so a profile's parameters
+    // (fragment size, TTL, split position...) were silently replaced by defaults.
+    [Fact]
+    public void ProcessPacket_UsesTheProfilesOwnParameters()
+    {
+        int SegmentsFor(int fragmentSize, bool adaptive)
+        {
+            var tempDir = GetTempProfileDir();
+            try
+            {
+                var profileManager = new ProfileManager(tempDir);
+                profileManager.SaveProfile(new DomainProfile
+                {
+                    Domain = "blocked.example.com",
+                    Method = BypassMethod.TcpFragmentation,
+                    FragmentSize = fragmentSize,
+                    UseAdaptiveParams = adaptive
+                });
+                using var engine = new LimboEngine(profileManager, enableRadar: false);
+                return engine.ProcessPacket(BuildClientHelloPacket("blocked.example.com"), isOutbound: true).Count;
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+            }
+        }
+
+        Assert.NotEqual(SegmentsFor(1, adaptive: false), SegmentsFor(40, adaptive: false));
+        Assert.Equal(SegmentsFor(1, adaptive: true), SegmentsFor(40, adaptive: true)); // adaptive = strategy defaults
+    }
+
     [Fact]
     public void ProcessPacket_InboundDirection_NeverMatchesEvenWithConfiguredProfile()
     {
