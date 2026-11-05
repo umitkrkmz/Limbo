@@ -290,7 +290,7 @@ limbo radar-import blocked.txt
 - **Modu Değiştir** — *sadece profiller* ile *genel* (GoodbyeDPI tarzı) mod arasında tek adımda geçiş
 - **Nasıl Kullanılır** — yerleşik rehber: hızlı başlangıç, modlar, profiller ve hariç tutma, DNS over HTTPS ve sorun giderme listesi
 - **Profil Yönetimi** — seçilen yönteme özel parametreleri soran bir sihirbazla profil listeleme/ekleme/düzenleme/silme
-- **DNS Ayarları** — DoH aç/kapa, sağlayıcı seç (Cloudflare/Google/Quad9/özel), sistemin gerçek yapılandırılmış DNS sunucularını görme, canlı çözümleme testi
+- **DNS Ayarları** — DoH aç/kapa, sağlayıcı seç (Cloudflare/Google/Quad9/özel), sistemin gerçekte kullandığı DNS sunucularını görme (IPv4 ve IPv6 ayrı ayrı; IPv6 DNS sunucuları etkinken DoH kapalıysa uyarı - yalnızca IPv4 için yapılmış DNS ayarı onları kapsamaz), canlı çözümleme testi
 - **Adaptif Motor (Radar)** — otomatik tespiti aç/kapa, **genel modu** aç/kapa, tespit edilen alan adlarında ve genel modda kullanılan varsayılan bypass yöntemini (ve parametrelerini) seçme, tespitleri listele/içe-dışa aktar/temizle
 - **Ağ Analizi** — ISS/genel IP kimliği + bir alan adı için DNS tamper, RST enjeksiyonu ya da sessiz düşürme arayan talep-üzerine canlı tarama
 - **Kalibrasyon** ve **Bağlantı Testi** — CLI komutlarıyla aynı kontroller, ilerleme çubuğu/sonuç tablosuyla

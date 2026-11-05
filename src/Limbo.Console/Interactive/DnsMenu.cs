@@ -25,20 +25,27 @@ internal static class DnsMenu
             InteractiveUi.WriteHeader(Loc.T("dns.subtitle"));
 
             var systemDns = SystemStatus.GetPrimaryInterfaceDns();
-            var systemDnsText = systemDns.HasValue && systemDns.Value.DnsServers.Count > 0
-                ? string.Join(", ", systemDns.Value.DnsServers)
-                : Loc.T("dns.not_found");
+            var (dnsV4, dnsV6) = SystemStatus.SplitByFamily(systemDns?.DnsServers ?? []);
+            string Format(IReadOnlyList<string> servers) =>
+                servers.Count > 0 ? string.Join(", ", servers).EscapeMarkup() : $"[grey]{Loc.T("dns.none")}[/]";
             var interfaceText = systemDns?.Name ?? Loc.T("dns.not_found");
 
             var table = new Table().Border(TableBorder.Rounded).HideHeaders();
             table.AddColumn("Key");
             table.AddColumn("Value");
             table.AddRow(Loc.T("dns.interface"), interfaceText.EscapeMarkup());
-            table.AddRow(Loc.T("dns.system_dns"), systemDnsText.EscapeMarkup());
+            table.AddRow(Loc.T("dns.system_dns_v4"), Format(dnsV4));
+            table.AddRow(Loc.T("dns.system_dns_v6"), Format(dnsV6));
             table.AddRow(Loc.T("dns.doh"), config.Dns.UseDoH ? $"[green]{Loc.T("on")}[/]" : $"[grey]{Loc.T("off")}[/]");
             if (config.Dns.UseDoH)
                 table.AddRow(Loc.T("dns.server"), config.Dns.DoHServer.EscapeMarkup());
             AnsiConsole.Write(table);
+            if (dnsV6.Count > 0)
+            {
+                AnsiConsole.MarkupLine(config.Dns.UseDoH
+                    ? $"[grey]{Loc.T("dns.ipv6_covered")}[/]"
+                    : $"[yellow]{Loc.T("dns.ipv6_warning")}[/]");
+            }
             AnsiConsole.MarkupLine($"[grey]{Loc.T("dns.doh_note")}[/]");
             AnsiConsole.WriteLine();
 

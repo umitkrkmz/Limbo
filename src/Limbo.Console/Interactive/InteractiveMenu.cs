@@ -89,9 +89,8 @@ internal static class InteractiveMenu
         var radarCount = new BlacklistManager().GetAllBlacklisted().Count;
 
         var interfaceText = netInfo?.Name ?? Loc.T("status.not_found");
-        // Windows can report the same server twice; the "%13" scope suffix of a
-        // link-local router address only costs width here.
-        var dnsServers = netInfo?.DnsServers.Select(s => s.Split('%')[0]).Distinct().ToList() ?? [];
+        var (dnsV4, dnsV6) = SystemStatus.SplitByFamily(netInfo?.DnsServers ?? []);
+        var dnsServers = dnsV4.Concat(dnsV6).ToList();
         var dnsText = dnsServers.Count > 0 ? string.Join(", ", dnsServers) : Loc.T("status.not_found");
         var dohHost = Uri.TryCreate(config.Dns.DoHServer, UriKind.Absolute, out var dohUri) ? dohUri.Host : config.Dns.DoHServer;
 

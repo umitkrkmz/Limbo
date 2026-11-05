@@ -290,7 +290,7 @@ Running `limbo` with no arguments opens a full interactive dashboard built on Sp
 - **Switch Mode** — one step between *profiles only* and *global* (GoodbyeDPI-style) mode
 - **How to Use** — built-in guide: quick start, modes, profiles and exclusions, DNS over HTTPS, and a troubleshooting checklist
 - **Profile Management** — list / add / edit / delete profiles through a wizard that only asks for the parameters relevant to the chosen method
-- **DNS Settings** — toggle DoH, pick a provider (Cloudflare/Google/Quad9/custom), see the system's actual configured DNS servers, test resolution live
+- **DNS Settings** — toggle DoH, pick a provider (Cloudflare/Google/Quad9/custom), see the DNS servers the system actually uses (IPv4 and IPv6 separately, with a warning when IPv6 DNS servers are active but DoH is off - an IPv4-only DNS setting doesn't cover them), test resolution live
 - **Adaptive Engine (Radar)** — turn auto-detection on/off, turn **global mode** on/off, choose the default bypass method (and parameters) used for detected domains and in global mode, list/import/export/clear detections
 - **Network Analysis** — ISP/public IP identity plus an on-demand live scan for DNS tampering, RST injection, or silent dropping against a domain
 - **Calibration** and **Connection Test** — same checks as the CLI commands, with a progress bar / results table

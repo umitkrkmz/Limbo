@@ -24,6 +24,16 @@ internal static class SystemStatus
     /// (up, with a default gateway) and returns its name plus the DNS
     /// servers Windows has configured for it. Returns null if none found.
     /// </summary>
+    /// <summary>
+    /// Splits DNS servers by IP version. Windows can report a server twice, and the
+    /// "%13" scope suffix of a link-local router address is noise for display.
+    /// </summary>
+    public static (IReadOnlyList<string> IPv4, IReadOnlyList<string> IPv6) SplitByFamily(IEnumerable<string> servers)
+    {
+        var distinct = servers.Select(s => s.Split('%')[0]).Distinct().ToList();
+        return ([.. distinct.Where(s => !s.Contains(':'))], [.. distinct.Where(s => s.Contains(':'))]);
+    }
+
     public static (string Name, IReadOnlyList<string> DnsServers)? GetPrimaryInterfaceDns()
     {
         try
