@@ -132,7 +132,7 @@ Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/
 | `Limbo-v<version>-setup.exe` | **Recommended.** Installs to Program Files, adds a Start menu entry, and can be removed from Add/Remove Programs. Uninstalling asks whether to also delete your settings, profiles and radar blacklist (`%LOCALAPPDATA%\Limbo`). |
 | `Limbo-Console-v<version>-win-x64.zip` | **Portable.** Extract anywhere and run `Limbo.Console.exe`; keep the files together in one folder. |
 
-Both are self-contained (no .NET install needed) and have **WinDivert bundled**. `Limbo.Console.exe` asks for Administrator rights itself (UAC prompt), since WinDivert needs them. The license files (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) are included in both. The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
+Both are self-contained (no .NET install needed) and have **WinDivert bundled**. `Limbo.Console.exe` asks for Administrator rights itself (UAC prompt), since WinDivert needs them. The license files (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) are included in both. You only need to fetch WinDivert yourself when [building from source](#build-from-source).
 
 > **One interceptor at a time:** only one Limbo copy can run the engine, a calibration or a network scan at once; a second one refuses with a message (read-only commands like `--list-profiles` still work alongside it). Limbo also warns if its Discord-only sister app [ZeroDivert](https://github.com/umitkrkmz/ZeroDivert) is running, since both rewrite Discord's TLS handshakes; run one or the other.
 
@@ -148,49 +148,30 @@ Both are self-contained (no .NET install needed) and have **WinDivert bundled**.
 
 - Windows 10/11 64-bit
 - **Administrator privileges required** — `Limbo.Console.exe` requests them itself on launch
-- Release ZIP: nothing else (the .NET runtime and WinDivert are bundled)
-- Building from source: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and WinDivert 2.2.2 (see below)
-
-### ⚠️ WinDivert Setup (Required)
-
-Limbo uses WinDivert for low-level packet interception via P/Invoke. WinDivert is licensed separately (LGPL v3 / GPL v2) and is **not committed to this repository** — the steps below are only needed if you're building from source. Pre-built release ZIPs (see "Downloads" above) already have WinDivert bundled.
-
-> **Building from source:** Place `WinDivert.dll` and `WinDivert64.sys` into `src/Limbo.Driver/runtimes/win-x64/native/` before building. MSBuild will automatically copy them to the output directory.
-
-**Step 1 — Download WinDivert 2.2.2:**
-
-> https://github.com/basil00/WinDivert/releases/tag/v2.2.2
-
-Download `WinDivert-2.2.2-A.zip` and extract it.
-
-**Step 2 — Copy the files next to the executable:**
-
-From the extracted ZIP, copy the `x64` variants:
-
-```
-WinDivert-2.2.2-A/
-└── x64/
-    ├── WinDivert.dll      ← copy this
-    └── WinDivert64.sys    ← copy this
-```
-
-Place both files in the same folder as `Limbo.Console.exe`:
-
-```
-Limbo.Console.exe
-WinDivert.dll        ← here
-WinDivert64.sys      ← here
-```
-
-> **Why 2.2.2 specifically?** Limbo's P/Invoke declarations (`WinDivertNative.cs`) target the WinDivert 2.2 API. Older versions (1.x, 2.0) have different function signatures and **will not work**. Newer minor versions (2.2.x) should be compatible.
+- Installer / release ZIP: nothing else (the .NET runtime and WinDivert are bundled)
+- Building from source: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and WinDivert 2.2.2 (see [Build from Source](#build-from-source))
 
 ### Build from Source
 
-```bash
-git clone https://github.com/umitkrkmz/Limbo.git
-cd Limbo
-dotnet build -c Release
-```
+WinDivert is licensed separately (LGPL v3 / GPL v2) and its binaries aren't committed to this repository, so a source build needs them first. (The installer and the release ZIP already include them.)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/umitkrkmz/Limbo.git
+   cd Limbo
+   ```
+2. Download `WinDivert-2.2.2-A.zip` from the [WinDivert 2.2.2 release](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) and extract it.
+3. Copy the two **x64** files into the project - MSBuild copies them next to the exe on every build:
+   ```
+   WinDivert-2.2.2-A/x64/WinDivert.dll    ->  src/Limbo.Driver/runtimes/win-x64/native/
+   WinDivert-2.2.2-A/x64/WinDivert64.sys  ->  src/Limbo.Driver/runtimes/win-x64/native/
+   ```
+4. Build:
+   ```bash
+   dotnet build -c Release
+   ```
+
+> **Why 2.2.2 specifically?** Limbo's P/Invoke declarations (`WinDivertNative.cs`) target the WinDivert 2.2 API. Older versions (1.x, 2.0) have different function signatures and **will not work**. Newer minor versions (2.2.x) should be compatible.
 
 To produce the same self-contained package as a release (single `Limbo.Console.exe` with the runtime bundled, plus WinDivert and the license files), use the publish profile:
 

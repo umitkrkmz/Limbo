@@ -132,7 +132,7 @@ Hazır derlenmiş ikili dosyalar [Releases](https://github.com/umitkrkmz/Limbo/r
 | `Limbo-v<sürüm>-setup.exe` | **Önerilen.** Program Files'a kurulur, Başlat menüsüne eklenir ve Program Ekle/Kaldır'dan kaldırılabilir. Kaldırırken ayarlarınızın, profillerinizin ve radar kara listenizin (`%LOCALAPPDATA%\Limbo`) de silinip silinmeyeceğini sorar. |
 | `Limbo-Console-v<sürüm>-win-x64.zip` | **Taşınabilir.** İstediğiniz yere çıkartıp `Limbo.Console.exe`'yi çalıştırın; dosyalar aynı klasörde durmalı. |
 
-İkisi de self-contained'dir (.NET kurulumu gerekmez) ve **WinDivert dahildir**. WinDivert yönetici yetkisi gerektirdiği için `Limbo.Console.exe` bu yetkiyi kendisi ister (UAC istemi). Lisans dosyaları (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) her ikisinde de bulunur. Aşağıdaki manuel [WinDivert Kurulumu](#%EF%B8%8F-windivert-kurulumu-gerekli) adımları yalnızca **kaynak koddan derlerken** gerekir.
+İkisi de self-contained'dir (.NET kurulumu gerekmez) ve **WinDivert dahildir**. WinDivert yönetici yetkisi gerektirdiği için `Limbo.Console.exe` bu yetkiyi kendisi ister (UAC istemi). Lisans dosyaları (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) her ikisinde de bulunur. WinDivert'i kendiniz indirmeniz yalnızca [kaynak koddan derlerken](#kaynak-koddan-derleme) gerekir.
 
 > **Aynı anda tek yakalayıcı:** motoru, kalibrasyonu ya da ağ taramasını aynı anda yalnızca bir Limbo kopyası çalıştırabilir; ikinci kopya bir mesajla reddeder (`--list-profiles` gibi salt okunur komutlar yine çalışır). Limbo, yalnızca Discord'a odaklı kardeş uygulaması [ZeroDivert](https://github.com/umitkrkmz/ZeroDivert) çalışıyorsa da uyarır; ikisi de Discord'un TLS el sıkışmalarını değiştirdiği için birini ya da diğerini kullanın.
 
@@ -148,49 +148,30 @@ Hazır derlenmiş ikili dosyalar [Releases](https://github.com/umitkrkmz/Limbo/r
 
 - Windows 10/11 64-bit
 - **Yönetici (Administrator) yetkisi gerekli** — `Limbo.Console.exe` açılırken bu yetkiyi kendisi ister
-- Release ZIP'i için başka bir şey gerekmez (.NET runtime ve WinDivert pakette)
-- Kaynak koddan derlemek için: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) ve WinDivert 2.2.2 (aşağıya bakın)
-
-### ⚠️ WinDivert Kurulumu (Gerekli)
-
-Limbo, düşük seviyeli paket yakalama için P/Invoke üzerinden WinDivert kullanır. WinDivert ayrı lisanslıdır (LGPL v3 / GPL v2) ve bu repoya **commit edilmemiştir** — aşağıdaki adımlar yalnızca kaynak koddan derlerken gereklidir. Hazır derlenmiş release ZIP'lerinde WinDivert zaten dahildir (bkz. yukarıdaki "İndirmeler" bölümü).
-
-> **Kaynak koddan derliyorsanız:** Derlemeden önce `WinDivert.dll` ve `WinDivert64.sys` dosyalarını `src/Limbo.Driver/runtimes/win-x64/native/` klasörüne yerleştirin. MSBuild bunları otomatik olarak çıktı klasörüne kopyalayacaktır.
-
-**Adım 1 — WinDivert 2.2.2'yi indirin:**
-
-> https://github.com/basil00/WinDivert/releases/tag/v2.2.2
-
-`WinDivert-2.2.2-A.zip` dosyasını indirip çıkarın.
-
-**Adım 2 — Dosyaları çalıştırılabilir dosyanın yanına kopyalayın:**
-
-Çıkardığınız ZIP'ten `x64` varyantlarını kopyalayın:
-
-```
-WinDivert-2.2.2-A/
-└── x64/
-    ├── WinDivert.dll      ← bunu kopyalayın
-    └── WinDivert64.sys    ← bunu kopyalayın
-```
-
-Her iki dosyayı da `Limbo.Console.exe` ile aynı klasöre yerleştirin:
-
-```
-Limbo.Console.exe
-WinDivert.dll        ← buraya
-WinDivert64.sys      ← buraya
-```
-
-> **Neden özellikle 2.2.2?** Limbo'nun P/Invoke tanımları (`WinDivertNative.cs`) WinDivert 2.2 API'sini hedefler. Eski sürümlerin (1.x, 2.0) farklı fonksiyon imzaları vardır ve **çalışmaz**. Daha yeni minor sürümler (2.2.x) uyumlu olmalıdır.
+- Kurulum dosyası / release ZIP'i için başka bir şey gerekmez (.NET runtime ve WinDivert pakette)
+- Kaynak koddan derlemek için: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) ve WinDivert 2.2.2 (bkz. [Kaynak Koddan Derleme](#kaynak-koddan-derleme))
 
 ### Kaynak Koddan Derleme
 
-```bash
-git clone https://github.com/umitkrkmz/Limbo.git
-cd Limbo
-dotnet build -c Release
-```
+WinDivert ayrı lisanslıdır (LGPL v3 / GPL v2) ve ikili dosyaları bu repoya commit edilmemiştir; bu yüzden kaynak koddan derlemeden önce onları eklemeniz gerekir. (Kurulum dosyasında ve release ZIP'inde zaten bulunurlar.)
+
+1. Repoyu klonlayın:
+   ```bash
+   git clone https://github.com/umitkrkmz/Limbo.git
+   cd Limbo
+   ```
+2. [WinDivert 2.2.2 release](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) sayfasından `WinDivert-2.2.2-A.zip` dosyasını indirip çıkarın.
+3. İki **x64** dosyasını projeye kopyalayın - MSBuild her derlemede bunları exe'nin yanına kopyalar:
+   ```
+   WinDivert-2.2.2-A/x64/WinDivert.dll    ->  src/Limbo.Driver/runtimes/win-x64/native/
+   WinDivert-2.2.2-A/x64/WinDivert64.sys  ->  src/Limbo.Driver/runtimes/win-x64/native/
+   ```
+4. Derleyin:
+   ```bash
+   dotnet build -c Release
+   ```
+
+> **Neden özellikle 2.2.2?** Limbo'nun P/Invoke tanımları (`WinDivertNative.cs`) WinDivert 2.2 API'sini hedefler. Eski sürümlerin (1.x, 2.0) farklı fonksiyon imzaları vardır ve **çalışmaz**. Daha yeni minor sürümler (2.2.x) uyumlu olmalıdır.
 
 Release'tekiyle aynı self-contained paketi (runtime gömülü tek bir `Limbo.Console.exe`, yanında WinDivert ve lisans dosyaları) üretmek için publish profilini kullanın:
 
