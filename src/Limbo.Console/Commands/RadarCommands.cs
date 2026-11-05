@@ -107,10 +107,19 @@ internal static class RadarCommands
 
     public static int Clear(bool skipConfirmation = false)
     {
-        if (!skipConfirmation && !AnsiConsole.Confirm("Clear all radar-detected domains? This cannot be undone."))
+        if (!skipConfirmation)
         {
-            AnsiConsole.MarkupLine("[grey]Cancelled.[/]");
-            return 0;
+            if (!AnsiConsole.Profile.Capabilities.Interactive)
+            {
+                AnsiConsole.MarkupLine("[red]Refusing to clear without confirmation in a non-interactive session.[/] Re-run with --yes.");
+                return 1;
+            }
+
+            if (!AnsiConsole.Confirm("Clear all radar-detected domains? This cannot be undone."))
+            {
+                AnsiConsole.MarkupLine("[grey]Cancelled.[/]");
+                return 0;
+            }
         }
 
         try

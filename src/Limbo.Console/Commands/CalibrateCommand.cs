@@ -16,20 +16,33 @@ internal static class CalibrateCommand
 {
     public static async Task<int> RunAsync(LimboConfig config, LimboLogger logger, string[] args)
     {
-        if (args.Length == 0)
+        var argList = args.ToList();
+        var save = argList.Remove("--save");
+
+        if (argList.Count == 0)
         {
-            AnsiConsole.MarkupLine("[yellow]Usage:[/] limbo calibrate <domain> [port]");
+            AnsiConsole.MarkupLine("[yellow]Usage:[/] " + "limbo calibrate <domain> [port] [--save]".EscapeMarkup());
             return 1;
         }
 
-        var domain = args[0];
-        var port = args.Length > 1 && int.TryParse(args[1], out var p) ? p : 443;
+        var domain = argList[0];
+        var port = argList.Count > 1 && int.TryParse(argList[1], out var p) ? p : 443;
 
         var result = await CalibrateAsync(config, logger, domain, port);
+        if (!result.Success) return 1;
 
-        if (result.Success && AnsiConsole.Confirm($"Add profile for *.{domain}?"))
+        if (save)
         {
             SaveAsProfile(config, domain, result);
+        }
+        else if (AnsiConsole.Profile.Capabilities.Interactive)
+        {
+            if (AnsiConsole.Confirm($"Add profile for *.{domain.EscapeMarkup()}?"))
+                SaveAsProfile(config, domain, result);
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[grey]Not saved. Re-run with --save to store the result as a profile.[/]");
         }
 
         return 0;

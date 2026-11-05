@@ -222,14 +222,14 @@ Usage: limbo [command] [options]
 
 Commands:
   run                          Start DPI bypass engine
-  calibrate <domain>           Find best bypass method for a domain
+  calibrate <domain> [--save]  Find best bypass method for a domain (--save: store without asking)
   test <domain>                Test DNS, DoH, TCP connectivity
   add-profile <domain> <method> [opts]   Add a domain profile
   remove-profile <domain>      Remove a domain profile
   radar                        Show auto-detected blocked domains
   radar-import <file>          Import a radar blacklist
   radar-export <file>          Export radar blacklist
-  radar-clear                  Clear all radar entries
+  radar-clear [--yes]          Clear all radar entries (--yes: skip confirmation)
 
 Options for add-profile:
   --frag <n>       Fragment size (TcpFragmentation / SmartFragmentation)

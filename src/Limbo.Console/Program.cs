@@ -24,9 +24,12 @@ class Program
                                   strategies to configured domains.
                                   Requires Administrator privileges.
 
-          calibrate <domain>      Find best bypass method for a domain
+          calibrate <domain> [port] [--save]
+                                  Find best bypass method for a domain
                                   Tests all strategies and measures latency.
-                                  Example: limbo calibrate discord.com
+                                  Asks whether to save the result as a profile;
+                                  --save stores it without asking (for scripts).
+                                  Example: limbo calibrate discord.com --save
 
           test <domain>           Quick connection test
                                   Tests DNS, DoH, and TCP connectivity.
@@ -56,7 +59,9 @@ class Program
           radar-export <file>     Export radar blacklist to a text file
                                   Example: limbo radar-export my_blacklist.txt
 
-          radar-clear             Clear all auto-detected (radar) entries
+          radar-clear [--yes]     Clear all auto-detected (radar) entries
+                                  Asks for confirmation; --yes (-y) skips it
+                                  (required in non-interactive sessions).
 
 
         ═══════════════════════════════════════════════════════════════════════════
@@ -197,7 +202,7 @@ class Program
             "radar" => RadarCommands.Show(),
             "radar-import" => RadarCommands.Import(commandArgs),
             "radar-export" => RadarCommands.Export(commandArgs),
-            "radar-clear" => RadarCommands.Clear(),
+            "radar-clear" => RadarCommands.Clear(skipConfirmation: commandArgs.Contains("--yes") || commandArgs.Contains("-y")),
             _ => await RunCommand.RunAsync(config, logger)
         };
     }

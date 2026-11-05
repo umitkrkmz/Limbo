@@ -22,6 +22,7 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Project version bumped to 1.1.0 in all csproj files (they still said 1.0.0; v1.1.0's exe only got its version from a workflow override) and copyright updated to 2025-2026
 
 ### Fixed
+- **`calibrate` and `radar-clear` crashed when scripted.** Both always showed a confirmation prompt, which throws in a non-interactive session (redirected output, scripts, scheduled tasks). `calibrate` now takes `--save` to store the result without asking, and otherwise only asks in an interactive terminal; it also exits with 1 when calibration fails instead of always 0. `radar-clear` takes `--yes`/`-y` (its existing skip-confirmation path was unreachable from the CLI) and refuses to clear without it in a non-interactive session
 - `--version` printed a hardcoded `0.3.0` (including in the v1.1.0 release); it now reads the assembly version and also shows the license
 
 ## [1.1.0] - 2026-08-31

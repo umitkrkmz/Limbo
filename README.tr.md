@@ -222,14 +222,14 @@ Usage: limbo [command] [options]
 
 Commands:
   run                          DPI bypass motorunu başlatır
-  calibrate <domain>           Bir alan adı için en iyi bypass yöntemini bulur
+  calibrate <domain> [--save]  Bir alan adı için en iyi bypass yöntemini bulur (--save: sormadan kaydeder)
   test <domain>                DNS, DoH, TCP bağlantısını test eder
   add-profile <domain> <method> [opts]   Alan adı profili ekler
   remove-profile <domain>      Alan adı profilini kaldırır
   radar                        Otomatik tespit edilen engellenmiş alan adlarını gösterir
   radar-import <file>          Radar kara listesi içe aktarır
   radar-export <file>          Radar kara listesini dışa aktarır
-  radar-clear                  Tüm radar kayıtlarını temizler
+  radar-clear [--yes]          Tüm radar kayıtlarını temizler (--yes: onay sormaz)
 
 add-profile için seçenekler:
   --frag <n>       Fragment boyutu (TcpFragmentation / SmartFragmentation)
