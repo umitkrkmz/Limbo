@@ -29,7 +29,6 @@ Limbo is a next-generation DPI (Deep Packet Inspection) bypass engine featuring:
 - **📡 Network Analysis** — Identifies your ISP and runs a live scan reporting DNS tampering, RST injection, or silent dropping for a domain
 - **ISP Behavior Analysis** — Detects RST injection, silent drops, DNS poisoning
 - **Automatic Calibration** — Actually applies each strategy through a scoped live capture to find what really works per domain, not a simulation
-- **SIMD Optimization** — AVX2-accelerated packet parsing
 - **DNS over HTTPS** — Answers every app's DNS queries (IPv4 + IPv6) over encrypted DoH while the engine runs, defeating ISP DNS poisoning without changing system settings
 - **Interactive Console** — Spectre.Console-powered menu with live traffic dashboard, plus a scriptable CLI
 
@@ -91,7 +90,7 @@ Without Administrator, only the ISP/network identity is shown — the live scan 
 | **ECH** | 200 | Encrypts SNI completely via HPKE | Cloudflare sites |
 | **QuicFake** | 150 | Fake datagram injection for QUIC | HTTP/3, Discord Voice |
 | **TcpFragmentation** | 100 | Splits TCP payload into small segments | General DPI |
-| **SmartFragmentation** | 90 | Splits at exact SNI offset (SIMD) | Minimal packets |
+| **SmartFragmentation** | 90 | Splits at exact SNI offset | Minimal packets |
 | **Desync** | 80 | Sends packets out of order | State-based DPI |
 | **FakeTtl** | 70 | Decoy packets with low TTL | Passive DPI |
 | **UdpFake** | 60 | Fake packets for UDP/QUIC traffic | Voice/Video |
@@ -109,7 +108,7 @@ Limbo/
 │   │   ├── Analysis/           # Radar, ISP behavior detection, network analysis, blacklist
 │   │   ├── Bypass/             # 7 DPI bypass strategies
 │   │   ├── Config/             # JSON configuration system
-│   │   ├── Detection/          # SIMD packet inspection
+│   │   ├── Detection/          # TLS/QUIC packet inspection
 │   │   ├── Dns/                # DNS over HTTPS + cache
 │   │   ├── Ech/                # ECH (X25519 + AES-GCM)
 │   │   ├── Engine/             # Orchestration + Calibration
@@ -349,7 +348,6 @@ Supported servers (any RFC 8484 server works; HTTP/2 is used when offered):
 | Automatic Calibration | No | ✅ Per domain |
 | Bandwidth Monitoring | No | ✅ Real-time |
 | DNS Bypass | ✅ Redirects UDP DNS to another resolver/port (`--dns-addr`, unencrypted) | ✅ Answers all apps' DNS (IPv4 + IPv6) over encrypted DoH |
-| SIMD Acceleration | No | ✅ AVX2 |
 | CLI | ✅ Yes | ✅ Interactive + scriptable |
 | Language | C (C99) | C# (.NET 10) |
 | Platform | Windows | Windows |
@@ -361,26 +359,11 @@ Limbo is **inspired by GoodbyeDPI** but approaches the problem differently: inst
 
 ## 🗺 Roadmap
 
-### ✅ Completed (v1.0)
-- [x] 7 bypass strategies + Adaptive mode
-- [x] ECH (Encrypted Client Hello) — full X25519 HPKE
-- [x] QUIC / HTTP3 bypass
-- [x] Radar system — auto-detect + auto-blacklist
-- [x] ISP behavior analysis (RST injection, silent drops)
-- [x] Per-domain profiles with wildcard support
-- [x] Automatic calibration per domain
-- [x] Profile import / export (JSON)
-- [x] Real-time bandwidth monitoring
-- [x] DNS over HTTPS (parallel A + AAAA)
-- [x] SIMD (AVX2) packet parsing
-- [x] Interactive console (Spectre.Console) with live traffic dashboard
-- [x] English / Turkish language switch
-- [x] Network Analysis — ISP identification + live DNS tampering/RST injection/silent drop scan
-- [x] Calibration actually applies each strategy live (scoped capture), not simulated
-- [x] Configurable default method for Radar auto-detected domains
-- [x] Full CLI (run, calibrate, test, radar, add/remove-profile)
-- [x] Unit test suite + CI (build & test on every push/PR)
+What's shipped is listed in the [CHANGELOG](CHANGELOG.md). Planned next:
 
+- [ ] **A real Adaptive method** — today the engine applies `Adaptive` as plain TCP fragmentation; it should try strategies per connection and keep what works
+- [ ] **Optional QUIC blocking in global mode** — like GoodbyeDPI's `-q`, so browsers fall back from HTTP/3 to TCP, where the bypass applies
+- [ ] **A combined method** — fragmentation plus a fake low-TTL request in one go, like GoodbyeDPI's `-5` mode
 
 ---
 

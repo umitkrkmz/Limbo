@@ -72,75 +72,8 @@ public class SmartFragmentationStrategy : IDpiBypassStrategy
         return results;
     }
 
-    /// <summary>
-    /// Find the offset of SNI extension value in TLS payload
-    /// </summary>
-    private static int FindSniOffset(ReadOnlySpan<byte> payload)
-    {
-        if (payload.Length < 43)
-            return -1;
-
-        try
-        {
-            // Skip TLS record header (5 bytes) + handshake header (4 bytes)
-            var offset = 9;
-            
-            // Skip client version (2) + random (32)
-            offset += 34;
-            
-            if (offset >= payload.Length)
-                return -1;
-            
-            // Skip session ID
-            var sessionIdLen = payload[offset];
-            offset += 1 + sessionIdLen;
-            
-            if (offset + 2 >= payload.Length)
-                return -1;
-            
-            // Skip cipher suites
-            var cipherSuitesLen = (payload[offset] << 8) | payload[offset + 1];
-            offset += 2 + cipherSuitesLen;
-            
-            if (offset >= payload.Length)
-                return -1;
-            
-            // Skip compression methods
-            var compressionLen = payload[offset];
-            offset += 1 + compressionLen;
-            
-            if (offset + 2 >= payload.Length)
-                return -1;
-            
-            // Extensions length
-            var extensionsLen = (payload[offset] << 8) | payload[offset + 1];
-            offset += 2;
-            
-            var extensionsEnd = offset + extensionsLen;
-            
-            while (offset + 4 < extensionsEnd && offset + 4 < payload.Length)
-            {
-                var extType = (payload[offset] << 8) | payload[offset + 1];
-                var extLen = (payload[offset + 2] << 8) | payload[offset + 3];
-                offset += 4;
-                
-                // SNI extension type = 0x0000
-                if (extType == 0 && offset + 5 <= payload.Length)
-                {
-                    // Return offset of the actual hostname (after SNI list length + type + name length)
-                    return offset + 5;
-                }
-                
-                offset += extLen;
-            }
-        }
-        catch
-        {
-            // Malformed packet
-        }
-        
-        return -1;
-    }
+    private static int FindSniOffset(ReadOnlySpan<byte> payload) =>
+        Limbo.Core.Detection.TlsClientHello.TryFindServerName(payload, out var hostOffset, out _) ? hostOffset : -1;
 
     private static int GetIpHeaderLength(ReadOnlySpan<byte> packet, bool isIPv6) 
         => isIPv6 ? 40 : (packet[0] & 0x0F) * 4;

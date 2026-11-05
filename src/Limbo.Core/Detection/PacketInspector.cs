@@ -129,73 +129,11 @@ public static class PacketInspector
     /// </summary>
     public static string? ExtractSni(ReadOnlySpan<byte> payload)
     {
-        if (payload.Length < 43)
+        if (!TlsClientHello.TryFindServerName(payload, out var hostOffset, out var hostLength)
+            || hostOffset + hostLength > payload.Length)
             return null;
 
-        try
-        {
-            // Skip TLS record header (5 bytes) and handshake header (4 bytes)
-            var offset = 9;
-            
-            // Skip client version (2 bytes) + random (32 bytes)
-            offset += 34;
-            
-            if (offset >= payload.Length)
-                return null;
-            
-            // Skip session ID
-            var sessionIdLen = payload[offset];
-            offset += 1 + sessionIdLen;
-            
-            if (offset + 2 >= payload.Length)
-                return null;
-            
-            // Skip cipher suites
-            var cipherSuitesLen = (payload[offset] << 8) | payload[offset + 1];
-            offset += 2 + cipherSuitesLen;
-            
-            if (offset >= payload.Length)
-                return null;
-            
-            // Skip compression methods
-            var compressionLen = payload[offset];
-            offset += 1 + compressionLen;
-            
-            if (offset + 2 >= payload.Length)
-                return null;
-            
-            // Extensions length
-            var extensionsLen = (payload[offset] << 8) | payload[offset + 1];
-            offset += 2;
-            
-            var extensionsEnd = offset + extensionsLen;
-            
-            while (offset + 4 < extensionsEnd && offset + 4 < payload.Length)
-            {
-                var extType = (payload[offset] << 8) | payload[offset + 1];
-                var extLen = (payload[offset + 2] << 8) | payload[offset + 3];
-                offset += 4;
-                
-                // SNI extension type = 0x0000
-                if (extType == 0 && offset + 5 <= payload.Length)
-                {
-                    // Skip SNI list length (2) + type (1) + name length (2)
-                    var sniNameLen = (payload[offset + 3] << 8) | payload[offset + 4];
-                    if (offset + 5 + sniNameLen <= payload.Length)
-                    {
-                        return Encoding.ASCII.GetString(payload.Slice(offset + 5, sniNameLen));
-                    }
-                }
-                
-                offset += extLen;
-            }
-        }
-        catch
-        {
-            // Malformed packet
-        }
-        
-        return null;
+        return Encoding.ASCII.GetString(payload.Slice(hostOffset, hostLength));
     }
 
     /// <summary>

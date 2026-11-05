@@ -29,7 +29,6 @@ Limbo, yeni nesil bir DPI (Deep Packet Inspection / Derin Paket İncelemesi) byp
 - **📡 Ağ Analizi** — ISS'nizi tanımlar ve bir alan adı için DNS tamper, RST enjeksiyonu ya da sessiz düşürme raporlayan canlı bir tarama yapar
 - **ISP Davranış Analizi** — RST enjeksiyonu, sessiz paket düşürme, DNS zehirlenmesi tespiti
 - **Otomatik Kalibrasyon** — Her stratejiyi taramalı bir canlı yakalama üzerinden gerçekten uygulayarak alan adı için ne işe yaradığını bulur, simülasyon değil
-- **SIMD Optimizasyonu** — AVX2 hızlandırmalı paket ayrıştırma
 - **DNS over HTTPS** — Motor çalışırken tüm uygulamaların DNS sorgularını (IPv4 + IPv6) şifreli DoH ile cevaplar; İSS'nin DNS zehirlemesini sistem ayarlarını değiştirmeden aşar
 - **İnteraktif Konsol** — Spectre.Console tabanlı, canlı trafik paneline sahip menü + betiklenebilir CLI
 
@@ -91,7 +90,7 @@ Yönetici yetkisi olmadan sadece ISS/ağ kimliği gösterilir — canlı tarama 
 | **ECH** | 200 | HPKE ile SNI'yi tamamen şifreler | Cloudflare siteleri |
 | **QuicFake** | 150 | QUIC için sahte datagram enjeksiyonu | HTTP/3, Discord Sesli |
 | **TcpFragmentation** | 100 | TCP payload'ını küçük parçalara böler | Genel DPI |
-| **SmartFragmentation** | 90 | Tam SNI offset'inde böler (SIMD) | Minimal paket sayısı |
+| **SmartFragmentation** | 90 | Tam SNI offset'inde böler | Minimal paket sayısı |
 | **Desync** | 80 | Paketleri sırasız gönderir | Durum tabanlı DPI |
 | **FakeTtl** | 70 | Düşük TTL'li sahte (decoy) paketler | Pasif DPI |
 | **UdpFake** | 60 | UDP/QUIC trafiği için sahte paketler | Sesli/Görüntülü |
@@ -109,7 +108,7 @@ Limbo/
 │   │   ├── Analysis/           # Radar, ISP davranış tespiti, ağ analizi, kara liste
 │   │   ├── Bypass/             # 7 DPI bypass stratejisi
 │   │   ├── Config/             # JSON yapılandırma sistemi
-│   │   ├── Detection/          # SIMD paket incelemesi
+│   │   ├── Detection/          # TLS/QUIC paket incelemesi
 │   │   ├── Dns/                # DNS over HTTPS + önbellek
 │   │   ├── Ech/                # ECH (X25519 + AES-GCM)
 │   │   ├── Engine/             # Orkestrasyon + Kalibrasyon
@@ -349,7 +348,6 @@ Desteklenen sunucular (her RFC 8484 sunucusu çalışır; sunucu destekliyorsa H
 | Otomatik Kalibrasyon | Yok | ✅ Alan adı başına |
 | Bant Genişliği İzleme | Yok | ✅ Gerçek zamanlı |
 | DNS Bypass | ✅ UDP DNS'i başka bir sunucu/porta yönlendirir (`--dns-addr`, şifresiz) | ✅ Tüm uygulamaların DNS'ini (IPv4 + IPv6) şifreli DoH ile cevaplar |
-| SIMD Hızlandırma | Yok | ✅ AVX2 |
 | CLI | ✅ Var | ✅ İnteraktif + betiklenebilir |
 | Dil | C (C99) | C# (.NET 10) |
 | Platform | Windows | Windows |
@@ -361,26 +359,11 @@ Limbo, **GoodbyeDPI'den ilham almıştır** ancak soruna farklı bir yaklaşıml
 
 ## 🗺 Yol Haritası
 
-### ✅ Tamamlananlar (v1.0)
-- [x] 7 bypass stratejisi + Adaptive mod
-- [x] ECH (Encrypted Client Hello) — tam X25519 HPKE
-- [x] QUIC / HTTP3 bypass
-- [x] Radar sistemi — otomatik tespit + otomatik kara liste
-- [x] ISP davranış analizi (RST enjeksiyonu, sessiz düşürmeler)
-- [x] Wildcard destekli alan adı bazlı profiller
-- [x] Alan adı başına otomatik kalibrasyon
-- [x] Profil içe/dışa aktarma (JSON)
-- [x] Gerçek zamanlı bant genişliği izleme
-- [x] DNS over HTTPS (paralel A + AAAA)
-- [x] SIMD (AVX2) paket ayrıştırma
-- [x] Canlı trafik paneline sahip interaktif konsol (Spectre.Console)
-- [x] İngilizce / Türkçe dil seçimi
-- [x] Ağ Analizi — ISS kimliği + canlı DNS tamper/RST enjeksiyonu/sessiz düşürme taraması
-- [x] Kalibrasyon her stratejiyi gerçekten canlı uyguluyor (taramalı yakalama), simülasyon değil
-- [x] Radar'ın otomatik tespit edilen domainleri için yapılandırılabilir varsayılan yöntem
-- [x] Tam CLI (run, calibrate, test, radar, add/remove-profile)
-- [x] Birim test paketi + CI (her push/PR'da build & test)
+Yayınlananlar [CHANGELOG](CHANGELOG.md)'da listelenir. Sırada planlananlar:
 
+- [ ] **Gerçek bir Adaptive yöntemi** — motor bugün `Adaptive`'i düz TCP parçalama olarak uyguluyor; bağlantı başına stratejileri deneyip çalışanı tutmalı
+- [ ] **Genel modda isteğe bağlı QUIC engelleme** — GoodbyeDPI'ın `-q`'su gibi; tarayıcılar HTTP/3'ten bypass'ın uygulandığı TCP'ye düşer
+- [ ] **Birleşik yöntem** — GoodbyeDPI'ın `-5` modu gibi parçalama ile düşük TTL'li sahte isteği bir arada uygulamak
 
 ---
 

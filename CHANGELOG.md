@@ -27,6 +27,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Interactive main menu: the status panel now sits beside the logo instead of below it (wrapping below only in narrow windows), so the whole screen fits a default 30-row console window; previously the top of the logo scrolled out of view
 - Project version bumped to 1.1.0 in all csproj files (they still said 1.0.0; v1.1.0's exe only got its version from a workflow override) and copyright updated to 2025-2026
 
+- **One ClientHello parser instead of three.** `PacketInspector` (SNI for profile matching), `SmartFragmentationStrategy` (split point) and `EchClientHelloBuilder` (SNI extension position) each walked the ClientHello with their own copy of the same code. They now share `TlsClientHello`, which bounds-checks every read instead of relying on try/catch, and has its own tests (SNI after a large key_share, truncated segments, garbage input)
+
 ### Fixed
 - **Profile parameters were ignored by the running engine.** `run` applied each profile's *method* with that strategy's default parameters, so a configured fragment size, fake TTL, split position, etc. never took effect (the existing test happened to use the default fragment size). The engine now applies the profile's own parameters. Separately, `add-profile ... --frag 4` (or any other parameter flag) saved the profile with adaptive parameters on, which also discarded the given values; passing a parameter now saves it as a manual-parameter profile
 - **The "DNS over HTTPS" setting didn't protect anything.** With it on, the engine merely pre-resolved profile domains over DoH and discarded the results; other apps' DNS still went to the ISP. Replaced by the DNS interception above
@@ -36,6 +38,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Default Discord profiles were incomplete:** new configs now also cover `*.discordapp.com`, `*.discordapp.net` (CDN/media, the updater) and `*.discord.media` (voice servers), matching ZeroDivert's list. Existing configs keep their profiles; add these with `limbo add-profile` if needed
 - **`-c <file>` only applied to loading.** Every save (`add-profile`, `remove-profile`, `calibrate --save`, all interactive settings screens) went to the default `%LOCALAPPDATA%\Limbo\config.json`, so a custom config silently never changed while the default one did. A config now remembers the file it was loaded from (`LimboConfig.SourcePath`, not serialized) and `ConfigManager.Save(config)` writes back to it; `--show-config`, `add-profile` and General Settings show that path. The now-misleading `ConfigManager.GetDefaultPath()` was removed in favor of `GetPath(config)`
 - `--version` printed a hardcoded `0.3.0` (including in the v1.1.0 release); it now reads the assembly version and also shows the license
+
+### Removed
+- **`SimdPacketParser` and the "AVX2-accelerated parsing" claims.** The AVX2 SNI finder was never called by the engine, and benchmarked on realistic ClientHellos (classic, and Chrome-style ~1.5 KB with a post-quantum key_share before or after the SNI) it was 2-6x *slower* than the structured parser actually in use (17-36 ns vs 39-192 ns per ClientHello on a Zen 4 CPU with AVX2 and AVX-512): scanning every byte for `00 00` loses to skipping whole blocks, whatever the vector width, and on a malformed record it locked onto a lookalike pattern. The structured parser is the right algorithm; .NET's own span searches already use AVX2/AVX-512 where they help. The README's SIMD feature, comparison-table row and roadmap item are gone
+- The README's "Completed" roadmap list (it duplicated the feature list and this changelog, under a wrong "v1.0" heading); the roadmap now lists planned work
 
 ## [1.1.0] - 2026-08-31
 

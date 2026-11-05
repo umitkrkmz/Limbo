@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using Limbo.Core.Detection;
 
 namespace Limbo.Core.Ech;
 
@@ -64,62 +65,11 @@ public class EchClientHelloBuilder
         }
     }
 
-    /// <summary>
-    /// Locate the 2-byte "extensions length" field that precedes the extensions
-    /// list in a TLS ClientHello (after record header, handshake header,
-    /// version, random, session ID, cipher suites, and compression methods).
-    /// </summary>
-    private static int FindExtensionsLengthOffset(ReadOnlySpan<byte> clientHello)
-    {
-        var offset = 5 + 4 + 2 + 32; // Record + Handshake + Version + Random
+    private static int FindExtensionsLengthOffset(ReadOnlySpan<byte> clientHello) =>
+        TlsClientHello.FindExtensionsLengthOffset(clientHello);
 
-        // Session ID
-        var sessionIdLen = clientHello[offset];
-        offset += 1 + sessionIdLen;
-
-        // Cipher suites
-        var cipherSuitesLen = BinaryPrimitives.ReadUInt16BigEndian(clientHello[offset..]);
-        offset += 2 + cipherSuitesLen;
-
-        // Compression methods
-        var compressionLen = clientHello[offset];
-        offset += 1 + compressionLen;
-
-        return offset;
-    }
-
-    /// <summary>
-    /// Find SNI extension offset and length in ClientHello
-    /// </summary>
-    private static (int Offset, int Length) FindSniExtension(ReadOnlySpan<byte> clientHello)
-    {
-        if (clientHello.Length < 43) return (-1, 0);
-
-        var extLenOffset = FindExtensionsLengthOffset(clientHello);
-        if (extLenOffset + 2 > clientHello.Length) return (-1, 0);
-
-        // Extensions length
-        var extensionsLen = BinaryPrimitives.ReadUInt16BigEndian(clientHello[extLenOffset..]);
-        var offset = extLenOffset + 2;
-
-        var extensionsEnd = offset + extensionsLen;
-
-        // Find SNI extension (type 0x0000)
-        while (offset + 4 <= extensionsEnd)
-        {
-            var extType = BinaryPrimitives.ReadUInt16BigEndian(clientHello[offset..]);
-            var extLen = BinaryPrimitives.ReadUInt16BigEndian(clientHello[(offset + 2)..]);
-
-            if (extType == 0x0000) // SNI
-            {
-                return (offset, 4 + extLen);
-            }
-
-            offset += 4 + extLen;
-        }
-
-        return (-1, 0);
-    }
+    private static (int Offset, int Length) FindSniExtension(ReadOnlySpan<byte> clientHello) =>
+        TlsClientHello.FindExtension(clientHello, 0x0000);
 
     /// <summary>
     /// Build HPKE info parameter
