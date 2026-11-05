@@ -171,7 +171,14 @@ internal static class Loc
         ["radar.import_prompt"] = ("File path to import:", "İçe aktarılacak dosya yolu:"),
         ["radar.export_prompt"] = ("File path to export:", "Dışa aktarılacak dosya yolu:"),
         ["radar.default_method_subtitle"] = ("Default Method for Auto-Detected Domains", "Otomatik Tespit Edilen Domainler için Varsayılan Yöntem"),
-        ["radar.current_default"] = ("Current default: {0}", "Şu anki varsayılan: {0}"),
+        ["radar.current_default"] = ("Default method (Radar detections and global mode): {0}", "Varsayılan yöntem (Radar tespitleri ve genel mod): {0}"),
+        ["radar.global_on"] = ("Turn On Global Mode (all traffic, like GoodbyeDPI)", "Genel Modu Aç (tüm trafik, GoodbyeDPI gibi)"),
+        ["radar.global_off"] = ("Turn Off Global Mode (profiles only)", "Genel Modu Kapat (sadece profiller)"),
+        ["radar.global_turned_on"] = ("Global mode on: every HTTPS/HTTP connection without a profile now gets the default method ({0}). Profiles still take priority - a profile with method None excludes a site that global mode breaks.", "Genel mod açıldı: profili olmayan her HTTPS/HTTP bağlantısına artık varsayılan yöntem ({0}) uygulanır. Profiller yine önceliklidir - genel modun bozduğu bir siteyi yöntemi None olan bir profille hariç tutabilirsiniz."),
+        ["radar.global_turned_off"] = ("Global mode off: only domains with a profile (or detected by Radar) are modified.", "Genel mod kapatıldı: sadece profili olan (ya da Radar'ın tespit ettiği) domainlere dokunulur."),
+        ["status.mode"] = ("Mode", "Mod"),
+        ["status.mode_profiles"] = ("Profiles only", "Sadece profiller"),
+        ["status.mode_global"] = ("Global - all traffic", "Genel - tüm trafik"),
         ["radar.default_method_saved"] = ("Default method updated.", "Varsayılan yöntem güncellendi."),
 
         // Network analysis

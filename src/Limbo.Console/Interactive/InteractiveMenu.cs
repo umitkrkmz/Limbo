@@ -106,6 +106,7 @@ internal static class InteractiveMenu
         table.AddRow(Loc.T("status.admin"), isAdmin ? $"[green]{Loc.T("status.admin_yes")}[/]" : $"[red]{Loc.T("status.admin_no")}[/]");
         table.AddRow(Loc.T("status.interface"), interfaceText.EscapeMarkup());
         table.AddRow(Loc.T("status.system_dns"), dnsText.EscapeMarkup());
+        table.AddRow(Loc.T("status.mode"), RadarMenu.FormatMode(config));
         table.AddRow(Loc.T("status.radar_engine"), config.EnableRadar ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]");
         table.AddRow(Loc.T("status.doh"), config.Dns.UseDoH ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]");
         table.AddRow(Loc.T("status.profile_count"), profileCount.ToString());

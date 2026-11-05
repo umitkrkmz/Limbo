@@ -25,6 +25,7 @@ Limbo, yeni nesil bir DPI (Deep Packet Inspection / Derin Paket İncelemesi) byp
 - **7 Bypass Stratejisi** — TCP Fragmentation, Smart Fragmentation, Desync, Fake TTL, UDP Fake, ECH, QUIC Fake
 - **🔐 ECH (Encrypted Client Hello)** — SNI'yi şifreleyerek DPI'nin hedef alan adını görmesini engeller
 - **🛰 Radar Sistemi** — Engellenen alan adlarını otomatik tespit edip bypass profili oluşturur
+- **🌍 Genel Mod** — GoodbyeDPI tarzı: sadece profilli alan adlarına değil, her HTTPS/HTTP bağlantısına bypass uygular (profiller yine önceliklidir; yöntemi `None` olan profil bir siteyi hariç tutar)
 - **📡 Ağ Analizi** — ISS'nizi tanımlar ve bir alan adı için DNS tamper, RST enjeksiyonu ya da sessiz düşürme raporlayan canlı bir tarama yapar
 - **ISP Davranış Analizi** — RST enjeksiyonu, sessiz paket düşürme, DNS zehirlenmesi tespiti
 - **Otomatik Kalibrasyon** — Her stratejiyi taramalı bir canlı yakalama üzerinden gerçekten uygulayarak alan adı için ne işe yaradığını bulur, simülasyon değil
@@ -55,6 +56,15 @@ Limbo, ISP'nizin bir alan adını engellediğini tespit ettiğinde otomatik olar
 1. Radar kara listesine ekler
 2. Onun için bir bypass profili oluşturur (yöntem yapılandırılabilir — varsayılan **Adaptive**)
 3. Hemen bypass uygulamaya başlar
+
+### 🌍 Genel Mod (GoodbyeDPI tarzı)
+
+Limbo varsayılan olarak yalnızca profili olan (ya da Radar'ın tespit ettiği) alan adlarına dokunur. **Genel mod** ise GoodbyeDPI gibi çalışır: profili olmayan her HTTPS/HTTP bağlantısına **varsayılan yöntem** uygulanır. Bu, Radar'ın kullandığı yöntemin aynısıdır ve **Adaptif Motor (Radar) → Varsayılan Yöntemi Değiştir**'den ayarlanır; `Adaptive`, TCP parçalama olarak çalışır.
+
+- **Profiller yine önceliklidir**, alan adı bazlı ince ayarlar çalışmaya devam eder.
+- **Genel modun bozduğu bir siteyi hariç tutmak için** ona yöntemi `None` olan bir profil verin, örn. `limbo add-profile *.bankam.example None`.
+- Açmak için: **Adaptif Motor (Radar) → Genel Modu Aç**, config'de `"globalMode": true` ya da tek bir çalıştırma için `limbo run --global`.
+- DNS-over-HTTPS her iki modda da aynı şekilde çalışır.
 
 ---
 
@@ -221,7 +231,7 @@ dotnet run --project src/Limbo.Console -- --help
 Usage: limbo [command] [options]
 
 Commands:
-  run                          DPI bypass motorunu başlatır
+  run [--global]               DPI bypass motorunu başlatır (--global: bu çalıştırmada tüm trafik)
   calibrate <domain> [--save]  Bir alan adı için en iyi bypass yöntemini bulur (--save: sormadan kaydeder)
   test <domain>                DNS, DoH, TCP bağlantısını test eder
   add-profile <domain> <method> [opts]   Alan adı profili ekler
@@ -279,7 +289,7 @@ limbo radar-import blocked.txt
 - **Motoru Başlat** — bypass motoru çalışırken canlı güncellenen trafik tablosu (paketler, eşleşen/değiştirilen, bant genişliği)
 - **Profil Yönetimi** — seçilen yönteme özel parametreleri soran bir sihirbazla profil listeleme/ekleme/düzenleme/silme
 - **DNS Ayarları** — DoH aç/kapa, sağlayıcı seç (Cloudflare/Google/Quad9/özel), sistemin gerçek yapılandırılmış DNS sunucularını görme, canlı çözümleme testi
-- **Adaptif Motor (Radar)** — otomatik tespiti aç/kapa, yeni tespit edilen alan adlarının hangi bypass yöntemini (ve parametrelerini) alacağını seçme, tespitleri listele/içe-dışa aktar/temizle
+- **Adaptif Motor (Radar)** — otomatik tespiti aç/kapa, **genel modu** aç/kapa, tespit edilen alan adlarında ve genel modda kullanılan varsayılan bypass yöntemini (ve parametrelerini) seçme, tespitleri listele/içe-dışa aktar/temizle
 - **Ağ Analizi** — ISS/genel IP kimliği + bir alan adı için DNS tamper, RST enjeksiyonu ya da sessiz düşürme arayan talep-üzerine canlı tarama
 - **Kalibrasyon** ve **Bağlantı Testi** — CLI komutlarıyla aynı kontroller, ilerleme çubuğu/sonuç tablosuyla
 - **Genel Ayarlar** — ayrıntılı loglama, log dosyası yolu, **dil** (İngilizce / Türkçe) ve güncelleme kontrolü
@@ -348,7 +358,7 @@ Desteklenen sunucular (her RFC 8484 sunucusu çalışır; sunucu destekliyorsa H
 
 | Özellik | GoodbyeDPI | Limbo |
 |---------|------------|-------|
-| Hedef | Tüm trafik, global seçenekler | Alan adı bazlı profiller |
+| Hedef | Tüm trafik, global seçenekler | Alan adı bazlı profiller ya da genel modda tüm trafik |
 | ECH Desteği | ⚠️ Sadece ECH grease (sahte paketler) | ✅ Tam X25519 HPKE (gerçek ECH) |
 | Profil Sistemi | Yok (sadece global bayraklar) | ✅ Alan adı başına wildcard desenler |
 | Radar (otomatik tespit) | Yok | ✅ Var |

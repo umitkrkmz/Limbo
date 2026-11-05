@@ -26,6 +26,7 @@ internal static class RadarMenu
             AnsiConsole.MarkupLine($"{Loc.T("radar.status")} {(config.EnableRadar ? $"[green]{Loc.T("on")}[/]" : $"[grey]{Loc.T("off")}[/]")}");
             AnsiConsole.MarkupLine($"{Loc.T("radar.detected_count")} {domains.Count}");
             AnsiConsole.MarkupLine(Loc.T("radar.current_default", config.DefaultMethodProfile.Method));
+            AnsiConsole.MarkupLine($"{Loc.T("status.mode")}: {FormatMode(config)}");
             AnsiConsole.WriteLine();
 
             var choice = AnsiConsole.Prompt(
@@ -33,6 +34,7 @@ internal static class RadarMenu
                     .Title(Loc.T("radar.prompt"))
                     .AddChoices(
                         config.EnableRadar ? Loc.T("radar.turn_off") : Loc.T("radar.turn_on"),
+                        config.GlobalMode ? Loc.T("radar.global_off") : Loc.T("radar.global_on"),
                         Loc.T("radar.default_method"),
                         Loc.T("radar.list"),
                         Loc.T("radar.import"),
@@ -52,6 +54,15 @@ internal static class RadarMenu
                 config.EnableRadar = true;
                 ConfigManager.Save(config);
                 AnsiConsole.MarkupLine($"[green]{Loc.T("radar.turned_on")}[/]");
+                InteractiveUi.PressEnterToContinue();
+            }
+            else if (choice == Loc.T("radar.global_on") || choice == Loc.T("radar.global_off"))
+            {
+                config.GlobalMode = !config.GlobalMode;
+                ConfigManager.Save(config);
+                AnsiConsole.MarkupLine(config.GlobalMode
+                    ? $"[green]{Loc.T("radar.global_turned_on", config.DefaultMethodProfile.Method)}[/]"
+                    : $"[grey]{Loc.T("radar.global_turned_off")}[/]");
                 InteractiveUi.PressEnterToContinue();
             }
             else if (choice == Loc.T("radar.default_method"))
@@ -88,6 +99,10 @@ internal static class RadarMenu
             }
         }
     }
+
+    public static string FormatMode(LimboConfig config) => config.GlobalMode
+        ? $"[yellow]{Loc.T("status.mode_global")}[/]"
+        : Loc.T("status.mode_profiles");
 
     /// <summary>
     /// Lets the user pick which bypass method Radar applies to newly

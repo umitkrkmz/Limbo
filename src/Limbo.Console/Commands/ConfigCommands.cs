@@ -22,7 +22,8 @@ internal static class ConfigCommands
         settings.AddRow("Filter", config.Filter.EscapeMarkup());
         settings.AddRow("Verbose", FormatBool(config.Verbose));
         settings.AddRow("Adaptive Engine (Radar)", FormatBool(config.EnableRadar));
-        settings.AddRow("Radar Default Method", config.DefaultMethodProfile.Method.ToString());
+        settings.AddRow("Default Method (Radar / global mode)", config.DefaultMethodProfile.Method.ToString());
+        settings.AddRow("Global Mode (all traffic)", FormatBool(config.GlobalMode));
         settings.AddRow("Language", config.Language.ToString());
         settings.AddRow("Update check (interactive menu)", FormatBool(config.CheckForUpdates));
         settings.AddRow("DNS over HTTPS", FormatBool(config.Dns.UseDoH));

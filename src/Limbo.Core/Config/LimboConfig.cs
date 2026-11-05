@@ -61,6 +61,13 @@ public class LimboConfig
     public bool EnableRadar { get; set; } = true;
 
     /// <summary>
+    /// GoodbyeDPI-style global mode: apply <see cref="DefaultMethodProfile"/> to every
+    /// HTTPS/HTTP connection that has no profile, instead of only to profiled or
+    /// Radar-detected domains. Profiles still win; a Method=None profile excludes a site.
+    /// </summary>
+    public bool GlobalMode { get; set; } = false;
+
+    /// <summary>
     /// Look up the latest GitHub release when the interactive menu opens (one
     /// anonymous request; never downloads or installs anything).
     /// </summary>

@@ -103,6 +103,36 @@ public class LimboEngineTests
         Assert.Equal(SegmentsFor(1, adaptive: true), SegmentsFor(40, adaptive: true)); // adaptive = strategy defaults
     }
 
+    [Theory]
+    [InlineData(false, "unprofiled.example.com", false)] // profiles-only: untouched
+    [InlineData(true, "unprofiled.example.com", true)]   // global: default method applied
+    [InlineData(true, "excluded.example.com", false)]    // global, but a None profile opts out
+    [InlineData(true, "www.excluded.example.com", false)]
+    public void GlobalMode_BypassesUnprofiledDomainsExceptExclusions(bool globalMode, string domain, bool expectModified)
+    {
+        var tempDir = GetTempProfileDir();
+        try
+        {
+            var profileManager = new ProfileManager(tempDir);
+            profileManager.SaveProfile(new DomainProfile { Domain = "*.excluded.example.com", Method = BypassMethod.None });
+
+            using var engine = new LimboEngine(
+                profileManager,
+                enableRadar: false,
+                defaultMethodProfile: new Limbo.Core.Config.ProfileConfig { Domain = "*", Method = BypassMethod.TcpFragmentation },
+                globalMode: globalMode);
+
+            var results = engine.ProcessPacket(BuildClientHelloPacket(domain), isOutbound: true);
+
+            Assert.Equal(expectModified, results.Count > 1);
+            Assert.Equal(expectModified ? 1 : 0, engine.GetStats().MatchedPackets);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir)) Directory.Delete(tempDir, true);
+        }
+    }
+
     [Fact]
     public void ProcessPacket_InboundDirection_NeverMatchesEvenWithConfiguredProfile()
     {

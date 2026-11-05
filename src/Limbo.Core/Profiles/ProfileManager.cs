@@ -94,22 +94,34 @@ public class ProfileManager
     /// wildcard ("*.example.com") matches. Returns a Method=None profile
     /// (never null) when nothing matches.
     /// </summary>
-    public DomainProfile GetProfile(string domain)
+    public DomainProfile GetProfile(string domain) =>
+        TryGetProfile(domain, out var profile)
+            ? profile
+            : new DomainProfile { Domain = domain, Method = BypassMethod.None };
+
+    /// <summary>
+    /// Like <see cref="GetProfile"/>, but tells "no profile" apart from "a profile
+    /// whose method is None" - global mode bypasses the former and excludes the latter.
+    /// </summary>
+    public bool TryGetProfile(string domain, out DomainProfile profile)
     {
         lock (_lock)
         {
             if (_profiles.TryGetValue(domain, out var exact))
-                return exact;
+            {
+                profile = exact;
+                return true;
+            }
 
             DomainProfile? bestMatch = null;
             var bestSuffixLength = -1;
 
-            foreach (var profile in _profiles.Values)
+            foreach (var candidate in _profiles.Values)
             {
-                if (!profile.Domain.StartsWith("*.", StringComparison.Ordinal))
+                if (!candidate.Domain.StartsWith("*.", StringComparison.Ordinal))
                     continue;
 
-                var suffix = profile.Domain[1..]; // "*.example.com" -> ".example.com"
+                var suffix = candidate.Domain[1..]; // "*.example.com" -> ".example.com"
                 // "*.discord.com" also covers discord.com itself - the apex is usually
                 // the main host (Discord's API/login), and users write the wildcard meaning both.
                 var isSubdomain = domain.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
@@ -119,12 +131,13 @@ public class ProfileManager
 
                 if (suffix.Length > bestSuffixLength)
                 {
-                    bestMatch = profile;
+                    bestMatch = candidate;
                     bestSuffixLength = suffix.Length;
                 }
             }
 
-            return bestMatch ?? new DomainProfile { Domain = domain, Method = BypassMethod.None };
+            profile = bestMatch!;
+            return bestMatch != null;
         }
     }
 

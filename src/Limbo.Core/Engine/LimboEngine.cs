@@ -24,6 +24,7 @@ public class LimboEngine : IDisposable
     private readonly ConnectionTracker _tracker = new();
     private readonly BandwidthMonitor _bandwidthMonitor = new();
     private readonly ProfileConfig _defaultMethodProfile;
+    private readonly bool _globalMode;
 
     private readonly CancellationTokenSource _cts = new();
     private readonly object _lock = new();
@@ -59,15 +60,22 @@ public class LimboEngine : IDisposable
     /// profiles, it just never adds new ones on its own.
     /// </param>
     /// <param name="defaultMethodProfile">
-    /// Method/parameter template applied to domains Radar auto-detects.
+    /// Method/parameter template applied to domains Radar auto-detects, and in
+    /// global mode to every domain without a profile.
     /// Defaults to Adaptive with adaptive parameters if not given.
+    /// </param>
+    /// <param name="globalMode">
+    /// GoodbyeDPI-style: bypass every HTTPS/HTTP connection, not just profiled
+    /// domains. Profiles still win, so a Method=None profile excludes a site.
     /// </param>
     public LimboEngine(
         ProfileManager? profileManager = null,
         BypassEngine? bypassEngine = null,
         bool enableRadar = true,
-        ProfileConfig? defaultMethodProfile = null)
+        ProfileConfig? defaultMethodProfile = null,
+        bool globalMode = false)
     {
+        _globalMode = globalMode;
         _profileManager = profileManager ?? new ProfileManager();
         _bypassEngine = bypassEngine ?? BypassEngine.CreateDefault();
         _analyzer = new IspBehaviorAnalyzer();
@@ -160,6 +168,10 @@ public class LimboEngine : IDisposable
 
         OnLog?.Invoke($"Starting Limbo engine with filter: {filter}");
         OnLog?.Invoke($"Loaded {_profileManager.GetAllProfiles().Count} domain profiles");
+        if (_globalMode)
+        {
+            OnLog?.Invoke($"[MODE] Global: every HTTPS/HTTP connection without a profile gets {_defaultMethodProfile.Method}; profiles with method None are left alone");
+        }
 
         _captureTask = Task.Run(() => RunCaptureLoopAsync(driver));
     }
@@ -204,8 +216,13 @@ public class LimboEngine : IDisposable
         if (!context.IsOutbound || context.TargetDomain == null)
             return [PacketResult.FromOriginal(packet)];
 
-        // Get profile for this domain
-        var profile = _profileManager.GetProfile(context.TargetDomain);
+        if (!_profileManager.TryGetProfile(context.TargetDomain, out var profile))
+        {
+            if (!_globalMode)
+                return [PacketResult.FromOriginal(packet)];
+
+            profile = BuildDefaultMethodProfile(context.TargetDomain);
+        }
 
         if (profile.Method == BypassMethod.None)
             return [PacketResult.FromOriginal(packet)];

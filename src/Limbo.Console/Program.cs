@@ -19,9 +19,12 @@ class Program
          COMMANDS
         ═══════════════════════════════════════════════════════════════════════════
 
-          run                     Start DPI bypass engine
+          run [--global]          Start DPI bypass engine
                                   Monitors network traffic and applies bypass
                                   strategies to configured domains.
+                                  --global: GoodbyeDPI-style - also bypass every
+                                  domain without a profile, using the default
+                                  method (for this run; see globalMode in config).
                                   Requires Administrator privileges.
 
           calibrate <domain> [port] [--save]
@@ -194,7 +197,7 @@ class Program
 
         return command switch
         {
-            "run" => await RunCommand.RunAsync(config, logger),
+            "run" => await RunCommand.RunAsync(config, logger, commandArgs),
             "calibrate" => await CalibrateCommand.RunAsync(config, logger, commandArgs),
             "test" => await TestCommand.RunAsync(config, commandArgs),
             "add-profile" => ProfileCommands.AddProfile(config, commandArgs),

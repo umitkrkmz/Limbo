@@ -25,6 +25,7 @@ Limbo is a next-generation DPI (Deep Packet Inspection) bypass engine featuring:
 - **7 Bypass Strategies** — TCP Fragmentation, Smart Fragmentation, Desync, Fake TTL, UDP Fake, ECH, QUIC Fake
 - **🔐 ECH (Encrypted Client Hello)** — Encrypts SNI so DPI cannot see target domain
 - **🛰 Radar System** — Auto-detects blocked domains and creates bypass profiles automatically
+- **🌍 Global Mode** — GoodbyeDPI-style: bypass every HTTPS/HTTP connection, not just profiled domains (profiles still override; method `None` excludes a site)
 - **📡 Network Analysis** — Identifies your ISP and runs a live scan reporting DNS tampering, RST injection, or silent dropping for a domain
 - **ISP Behavior Analysis** — Detects RST injection, silent drops, DNS poisoning
 - **Automatic Calibration** — Actually applies each strategy through a scoped live capture to find what really works per domain, not a simulation
@@ -55,6 +56,15 @@ When Limbo detects that your ISP is blocking a domain, it automatically:
 1. Adds it to the radar blacklist
 2. Creates a bypass profile for it (method configurable — defaults to **Adaptive**)
 3. Starts applying bypass immediately
+
+### 🌍 Global Mode (GoodbyeDPI-style)
+
+By default Limbo only touches domains that have a profile (or that Radar detected). **Global mode** works the way GoodbyeDPI does instead: every HTTPS/HTTP connection without a profile gets the **default method** (the same one Radar uses, set in **Adaptive Engine (Radar) → Change Default Method**; `Adaptive` behaves as TCP fragmentation).
+
+- **Profiles still take priority**, so per-domain tuning keeps working.
+- **Excluding a site that global mode breaks:** give it a profile with method `None`, e.g. `limbo add-profile *.mybank.example None`.
+- Turn it on in **Adaptive Engine (Radar) → Turn On Global Mode**, set `"globalMode": true` in the config, or use it for a single run with `limbo run --global`.
+- DNS-over-HTTPS works the same in both modes.
 
 ---
 
@@ -221,7 +231,7 @@ dotnet run --project src/Limbo.Console -- --help
 Usage: limbo [command] [options]
 
 Commands:
-  run                          Start DPI bypass engine
+  run [--global]               Start DPI bypass engine (--global: bypass all traffic this run)
   calibrate <domain> [--save]  Find best bypass method for a domain (--save: store without asking)
   test <domain>                Test DNS, DoH, TCP connectivity
   add-profile <domain> <method> [opts]   Add a domain profile
@@ -279,7 +289,7 @@ Running `limbo` with no arguments opens a full interactive dashboard built on Sp
 - **Start Engine** — live-updating traffic table (packets, matched/modified, bandwidth) while the bypass engine runs
 - **Profile Management** — list / add / edit / delete profiles through a wizard that only asks for the parameters relevant to the chosen method
 - **DNS Settings** — toggle DoH, pick a provider (Cloudflare/Google/Quad9/custom), see the system's actual configured DNS servers, test resolution live
-- **Adaptive Engine (Radar)** — turn auto-detection on/off, choose which bypass method (and parameters) newly detected domains get, list/import/export/clear detections
+- **Adaptive Engine (Radar)** — turn auto-detection on/off, turn **global mode** on/off, choose the default bypass method (and parameters) used for detected domains and in global mode, list/import/export/clear detections
 - **Network Analysis** — ISP/public IP identity plus an on-demand live scan for DNS tampering, RST injection, or silent dropping against a domain
 - **Calibration** and **Connection Test** — same checks as the CLI commands, with a progress bar / results table
 - **General Settings** — verbose logging, log file path, **language** (English / Turkish), and the update check
@@ -348,7 +358,7 @@ Supported servers (any RFC 8484 server works; HTTP/2 is used when offered):
 
 | Feature | GoodbyeDPI | Limbo |
 |---------|------------|-------|
-| Target | All traffic, global options | Per-domain profiles |
+| Target | All traffic, global options | Per-domain profiles, or all traffic in global mode |
 | ECH Support | ⚠️ ECH grease only (fake packets) | ✅ Full X25519 HPKE (real ECH) |
 | Profile System | No (global flags only) | ✅ Wildcard patterns per domain |
 | Radar (auto-detect) | No | ✅ Yes |

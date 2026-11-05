@@ -17,8 +17,10 @@ namespace Limbo.Console.Commands;
 /// </summary>
 internal static class RunCommand
 {
-    public static async Task<int> RunAsync(LimboConfig config, LimboLogger logger)
+    public static async Task<int> RunAsync(LimboConfig config, LimboLogger logger, string[]? args = null)
     {
+        var globalMode = config.GlobalMode || (args?.Contains("--global") ?? false);
+
         if (!SystemStatus.IsAdministrator())
         {
             AnsiConsole.MarkupLine("[red]Administrator privileges required[/]");
@@ -43,7 +45,8 @@ internal static class RunCommand
         using var engine = new LimboEngine(
             profileManager,
             enableRadar: config.EnableRadar,
-            defaultMethodProfile: config.DefaultMethodProfile);
+            defaultMethodProfile: config.DefaultMethodProfile,
+            globalMode: globalMode);
 
         engine.OnLog += msg => logger.Info(msg);
         engine.ConfigureDns(config.Dns);
