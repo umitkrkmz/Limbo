@@ -1,57 +1,55 @@
+# Builds the end-user package and creates a *draft* GitHub Release whenever a
+# version tag is pushed, e.g.:
+#
+#   git tag v1.2.0 && git push origin v1.2.0
+#
+# The draft gets the zip + a .sha256 file attached; edit the release notes and
+# press "Publish" on GitHub when ready. Tags with a suffix (v1.2.0-rc.1) become
+# pre-releases, which is handy for testing this workflow itself.
 name: Release
 
 on:
   push:
-    tags:
-      - "v*"
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag to build (e.g. v1.1.0) - existing tag, for re-running a release manually"
-        required: true
+    tags: ["v*"]
 
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: windows-latest
-
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - uses: actions/checkout@v5
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
-      - name: Determine version
-        id: version
+      # Catches the easy mistake of tagging before bumping <Version>, which
+      # would ship an exe whose --version disagrees with the release.
+      - name: Check tag matches project version
         shell: pwsh
         run: |
-          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
-          $version = $tag -replace '^v', ''
-          "tag=$tag" >> $env:GITHUB_OUTPUT
-          "version=$version" >> $env:GITHUB_OUTPUT
+          [xml]$proj = Get-Content src/Limbo.Console/Limbo.Console.csproj
+          $version = @($proj.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          if ($env:TAG -ne "v$version" -and -not $env:TAG.StartsWith("v$version-")) {
+            throw "Tag $env:TAG does not match <Version>$version</Version> in Limbo.Console.csproj"
+          }
 
-      # WinDivert is licensed separately (LGPLv3/GPLv2 - see basil00/WinDivert)
-      # and isn't committed to this repo. Downloading the official pre-built
-      # binaries here (rather than relying on empty placeholders like the
-      # build-verification workflow does) means this same step both
-      # satisfies Limbo.Driver's build-time copy requirement AND gives us
-      # the real files to ship in the release package.
+      # WinDivert binaries aren't committed to this repo; fetch the official
+      # pre-built release so the package ships the real driver. Its license
+      # text is committed (src/Limbo.Driver/LICENSE-WinDivert.txt).
       - name: Download official WinDivert 2.2.2
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://github.com/basil00/WinDivert/releases/download/v2.2.2/WinDivert-2.2.2-A.zip" -OutFile windivert.zip
           Expand-Archive -Path windivert.zip -DestinationPath windivert-extracted
-          New-Item -ItemType Directory -Force -Path "src/Limbo.Driver/runtimes/win-x64/native" | Out-Null
-          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert.dll" "src/Limbo.Driver/runtimes/win-x64/native/WinDivert.dll"
-          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert64.sys" "src/Limbo.Driver/runtimes/win-x64/native/WinDivert64.sys"
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/basil00/WinDivert/master/LICENSE" -OutFile windivert-license.txt
+          $native = "src/Limbo.Driver/runtimes/win-x64/native"
+          New-Item -ItemType Directory -Force -Path $native | Out-Null
+          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert.dll" "$native/WinDivert.dll"
+          Copy-Item "windivert-extracted/WinDivert-2.2.2-A/x64/WinDivert64.sys" "$native/WinDivert64.sys"
 
       - name: Restore
         run: dotnet restore Limbo.slnx
@@ -62,63 +60,51 @@ jobs:
       - name: Test
         run: dotnet test tests/Limbo.Tests/Limbo.Tests.csproj --configuration Release --no-build --verbosity normal
 
-      - name: Publish Limbo.Console (self-contained, single-file, win-x64)
-        run: >
-          dotnet publish src/Limbo.Console/Limbo.Console.csproj
-          --configuration Release --runtime win-x64 --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:Version=${{ steps.version.outputs.version }}
-          --output publish
+      - name: Publish (self-contained, single file)
+        run: dotnet publish src/Limbo.Console/Limbo.Console.csproj -p:PublishProfile=win-x64
 
-      - name: Assemble release package
+      - name: Verify package contents
         shell: pwsh
         run: |
-          # Belt-and-suspenders: Limbo.Driver's CopyToOutputDirectory items
-          # generally flow through to a referencing project's publish output
-          # too, but copy explicitly so the release doesn't silently ship
-          # without WinDivert if that ever changes.
-          Copy-Item "src/Limbo.Driver/runtimes/win-x64/native/WinDivert.dll" "publish/WinDivert.dll" -Force
-          Copy-Item "src/Limbo.Driver/runtimes/win-x64/native/WinDivert64.sys" "publish/WinDivert64.sys" -Force
-          Copy-Item "windivert-license.txt" "publish/WinDivert-LICENSE.txt"
-          Copy-Item "LICENSE" "publish/LICENSE.txt"
-          Set-Content -Path "publish/THIRD_PARTY_NOTICES.txt" -Value @"
-          This package bundles WinDivert.dll and WinDivert64.sys from the
-          WinDivert project (https://github.com/basil00/WinDivert), dual-licensed
-          under your choice of LGPLv3 or GPLv2 - see WinDivert-LICENSE.txt.
-          WinDivert's source code is available at the URL above.
+          $dir = "src/Limbo.Console/bin/publish/win-x64"
+          $expected = "Limbo.Console.exe", "WinDivert.dll", "WinDivert64.sys",
+                      "LICENSE.txt", "THIRD-PARTY-NOTICES.txt", "LICENSE-WinDivert.txt"
+          $missing = $expected | Where-Object { -not (Test-Path "$dir/$_") }
+          if ($missing) { throw "Publish output is missing: $($missing -join ', ')" }
 
-          Limbo itself is licensed under GPLv2 - see LICENSE.txt.
-          "@
-
-      - name: Zip package
-        id: zip
+      - name: Package portable zip + SHA-256
         shell: pwsh
         run: |
-          $zipName = "Limbo-Console-${{ steps.version.outputs.tag }}-win-x64.zip"
-          Compress-Archive -Path "publish/*" -DestinationPath $zipName
-          $hash = (Get-FileHash $zipName -Algorithm SHA256).Hash
-          "name=$zipName" >> $env:GITHUB_OUTPUT
-          "sha256=$hash" >> $env:GITHUB_OUTPUT
+          $name = "Limbo-Console-$env:TAG-win-x64"
+          New-Item -ItemType Directory $name | Out-Null
+          Copy-Item src/Limbo.Console/bin/publish/win-x64/* $name/
+          Compress-Archive -Path $name -DestinationPath "$name.zip"
+          $hash = (Get-FileHash "$name.zip" -Algorithm SHA256).Hash
+          "$hash  $name.zip" | Out-File -Encoding ascii "$name.zip.sha256"
+          "ZIP_NAME=$name.zip" >> $env:GITHUB_ENV
+          "ZIP_SHA256=$hash" >> $env:GITHUB_ENV
 
-      - name: Create or update GitHub Release
+      - name: Create draft release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ steps.version.outputs.tag }}"
-          $zip = "${{ steps.zip.outputs.name }}"
           $notes = @"
-          WinDivert is bundled in this ZIP (see WinDivert-LICENSE.txt / THIRD_PARTY_NOTICES.txt inside).
-          Extract and run ``Limbo.Console.exe`` as Administrator.
+          <!-- Draft created by the release workflow: replace this with the release notes (see CHANGELOG.md) before publishing. -->
 
-          **SHA-256:** ``${{ steps.zip.outputs.sha256 }}``
+          ## Install
+
+          Extract ``$env:ZIP_NAME`` and run ``Limbo.Console.exe`` (it asks for Administrator rights itself; WinDivert needs them). No .NET install required; the runtime is bundled. WinDivert and all third-party license notices are included in the ZIP.
+
+          The app is not code-signed: if SmartScreen warns on first launch, choose **More info > Run anyway**. Windows 11's **Smart App Control** blocks unsigned apps entirely; see the README.
+
+          **SHA-256**
+          ``````
+          $env:ZIP_SHA256  $env:ZIP_NAME
+          ``````
           "@
-          Set-Content -Path release-notes.txt -Value $notes
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag $zip --clobber
-            gh release edit $tag --notes-file release-notes.txt
-          } else {
-            gh release create $tag $zip --title "Limbo $tag" --notes-file release-notes.txt
-          }
+          Set-Content -Path release-notes.md -Value $notes
+
+          $flags = @("--draft", "--title", "Limbo $env:TAG", "--notes-file", "release-notes.md")
+          if ($env:TAG.Contains("-")) { $flags += "--prerelease" }
+          gh release create $env:TAG $env:ZIP_NAME "$env:ZIP_NAME.sha256" @flags

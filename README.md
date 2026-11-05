@@ -8,7 +8,7 @@
 
 [![Build & Test](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml/badge.svg)](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 
 **🇬🇧 English** | [🇹🇷 Türkçe](README.tr.md)
@@ -121,9 +121,11 @@ Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/
 |---------|-------------|
 | `Limbo-Console-<version>-win-x64.zip` | CLI application (self-contained, no .NET install needed) — **WinDivert is bundled**, ready to run |
 
-> **After downloading:** Extract the ZIP and run `Limbo.Console.exe` as Administrator — `WinDivert.dll`, `WinDivert64.sys`, and WinDivert's license (`WinDivert-LICENSE.txt`) are already included. The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
+> **After downloading:** Extract the ZIP and run `Limbo.Console.exe` — it asks for Administrator rights itself (UAC prompt), since WinDivert needs them. `WinDivert.dll` and `WinDivert64.sys` are already included, along with the license files (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`). The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
 
-> **SHA-256 checksums** are listed in each release's description for verification.
+> **SHA-256 checksums:** each release has a `.sha256` file next to the ZIP. Compare it with the output of `Get-FileHash <file> -Algorithm SHA256` in PowerShell.
+
+> **Not code-signed:** if SmartScreen says "Windows protected your PC" on first launch, choose **More info → Run anyway**. Windows 11's **Smart App Control** blocks unsigned apps outright and offers no per-app exception; if it's set to *On* (Windows Security → App & browser control), Limbo won't start. Turning that feature off affects every app, not just Limbo, and may require resetting Windows to turn back on — weigh that before doing it, or [build from source](#build-from-source) instead.
 
 ---
 
@@ -132,9 +134,9 @@ Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/
 ### Prerequisites
 
 - Windows 10/11 64-bit
-- .NET 10.0 Runtime
-- **Administrator privileges required**
-- WinDivert 2.2.2 (see below)
+- **Administrator privileges required** — `Limbo.Console.exe` requests them itself on launch
+- Release ZIP: nothing else (the .NET runtime and WinDivert are bundled)
+- Building from source: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) and WinDivert 2.2.2 (see below)
 
 ### ⚠️ WinDivert Setup (Required)
 
@@ -177,15 +179,25 @@ cd Limbo
 dotnet build -c Release
 ```
 
+To produce the same self-contained package as a release (single `Limbo.Console.exe` with the runtime bundled, plus WinDivert and the license files), use the publish profile:
+
+```bash
+dotnet publish src/Limbo.Console -p:PublishProfile=win-x64
+```
+
+Output lands in `src/Limbo.Console/bin/publish/win-x64/`.
+
 ### Run
 
 ```powershell
-# Run as Administrator - launches the interactive menu
+# From an Administrator terminal - launches the interactive menu
 dotnet run --project src/Limbo.Console
 
 # Or use it as a scriptable CLI
 dotnet run --project src/Limbo.Console -- --help
 ```
+
+> `Limbo.Console.exe` carries a manifest that requires elevation, so `dotnet run` from a **non**-elevated terminal fails with "The requested operation requires elevation". Run the terminal as Administrator, or run the built DLL through the `dotnet` host (`dotnet src/Limbo.Console/bin/Debug/net10.0/Limbo.Console.dll --help`) for commands that don't touch WinDivert.
 
 ---
 
@@ -322,7 +334,7 @@ Limbo runs parallel A + AAAA queries and prioritizes IPv6 addresses.
 | CLI | ✅ Yes | ✅ Interactive + scriptable |
 | Language | C (C99) | C# (.NET 10) |
 | Platform | Windows | Windows |
-| License | Apache 2.0 | GPL v2 |
+| License | Apache 2.0 | GPL v3 (or later) |
 
 Limbo is **inspired by GoodbyeDPI** but approaches the problem differently: instead of one global configuration, it uses per-domain strategies with automatic detection and adaptive calibration.
 
@@ -399,11 +411,15 @@ Have a question, idea, or want to share how you're using Limbo?
 
 ## 📄 License
 
-This project is licensed under the **GNU General Public License v2.0**.
+Copyright (C) 2025-2026 Umit Korkmaz
 
-> Because Limbo uses [WinDivert](https://github.com/basil00/WinDivert) which is dual-licensed under LGPL v3 / GPL v2, Limbo is distributed under **GPL v2** to maintain license compatibility.
+This project is licensed under the **GNU General Public License v3.0 or later** (`GPL-3.0-or-later`): you can redistribute and/or modify it under the terms of version 3 of the GPL as published by the Free Software Foundation, or (at your option) any later version. It is distributed in the hope that it will be useful, but **without any warranty**; see the license text for details.
 
-See [LICENSE](LICENSE) for the full license text.
+> Limbo uses [WinDivert](https://github.com/basil00/WinDivert), which is dual-licensed under LGPL v3 / GPL v2; Limbo uses it under the **LGPL v3** terms, which are compatible with GPL v3.
+
+> **Earlier versions:** v1.0.0 and v1.1.0 were released under **GPL v2**, and copies of those versions remain available under GPL v2. The switch to GPL v3 applies from the next release on.
+
+See [LICENSE](LICENSE) for the full license text. The third-party components bundled in release packages (WinDivert, Spectre.Console, BouncyCastle, the .NET runtime) and their licenses are listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), which is also included in every release ZIP.
 
 ---
 

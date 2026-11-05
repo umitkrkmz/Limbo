@@ -7,23 +7,36 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Authors>Umit Korkmaz</Authors>
     <Description>WinDivert packet capture driver for Limbo</Description>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.1.0</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
     <Product>Limbo</Product>
     <Company>Umit Korkmaz</Company>
-    <Copyright>Copyright © 2025 Umit Korkmaz</Copyright>
+    <Copyright>Copyright © 2025-2026 Umit Korkmaz</Copyright>
   </PropertyGroup>
 
-  <!-- WinDivert native files - copy to output directory -->
+  <!--
+    Kept out of single-file bundles: WinDivert.dll loads WinDivert64.sys from its
+    own directory, and a kernel driver has to exist as a real file on disk - not
+    extracted to a temp folder at runtime.
+  -->
   <ItemGroup>
     <None Include="runtimes\win-x64\native\WinDivert.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <Link>WinDivert.dll</Link>
     </None>
     <None Include="runtimes\win-x64\native\WinDivert64.sys">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <Link>WinDivert64.sys</Link>
+    </None>
+    <!-- WinDivert's own license file, unchanged (LGPLv3 / GPLv3 / GPLv2 texts). -->
+    <None Include="LICENSE-WinDivert.txt">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
     </None>
   </ItemGroup>
 

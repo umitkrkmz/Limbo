@@ -10,6 +10,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Complete license files in every release package.** The v1.1.0 ZIP listed only WinDivert in its notices, although it also redistributes Spectre.Console, BouncyCastle and (being self-contained) the .NET runtime, whose MIT licenses all require their notices to travel with the binaries. Release packages now contain `LICENSE.txt` (Limbo, GPLv3), `LICENSE-WinDivert.txt` (WinDivert 2.2.2's own license file, unchanged; now committed instead of downloaded from WinDivert's `master` at build time) and `THIRD-PARTY-NOTICES.txt` listing every bundled component with its copyright and permission notice
+- `app.manifest` requesting Administrator: `Limbo.Console.exe` now raises the UAC prompt itself instead of relying on the user to choose "Run as administrator". Side effect: `dotnet run` from a non-elevated terminal now fails with "requires elevation" (see README)
+- Publish profile `src/Limbo.Console/Properties/PublishProfiles/win-x64.pubxml` (self-contained, single-file, compressed, no `.pdb`s), so a local `dotnet publish -p:PublishProfile=win-x64` produces exactly the release package; the license files and WinDivert binaries are kept next to the exe via `ExcludeFromSingleFile`
+
+### Changed
+- **License changed from GPL v2 to GPL v3 or later (`GPL-3.0-or-later`).** The previous rationale ("GPL v2 for compatibility with WinDivert") never required v2: WinDivert is dual-licensed LGPL v3 / GPL v2, and its LGPL v3 option is compatible with GPL v3; Spectre.Console and BouncyCastle (MIT) are compatible with both. GPL v3 adds an explicit patent license, a 30-day cure period after a violation, and simpler source-distribution rules. v1.0.0 and v1.1.0 remain available under GPL v2. `LICENSE` now holds the verbatim GPL v3 text from gnu.org
+- **Release workflow:** checks that the pushed tag matches `<Version>` in `Limbo.Console.csproj`, publishes via the new profile, fails if any expected file is missing from the package, attaches a `.sha256` file next to the ZIP, and creates a **draft** release to review before publishing (`-rc`-style tags become pre-releases). `actions/checkout` and `actions/setup-dotnet` bumped to v5 in both workflows (v4 ran on the deprecated Node 20)
+- Project version bumped to 1.1.0 in all csproj files (they still said 1.0.0; v1.1.0's exe only got its version from a workflow override) and copyright updated to 2025-2026
+
+### Fixed
+- `--version` printed a hardcoded `0.3.0` (including in the v1.1.0 release); it now reads the assembly version and also shows the license
+
+## [1.1.0] - 2026-08-31
+
+### Added
 - Interactive console UI (Spectre.Console) — main menu, profile wizard, DNS/Radar/general settings screens, live traffic dashboard for `run`
 - English / Turkish language switch for the interactive console (`LimboConfig.Language`)
 - Configurable default bypass method (+ manual parameters) for Radar auto-detected domains (`LimboConfig.DefaultMethodProfile`), replacing the previously hardcoded `Adaptive`

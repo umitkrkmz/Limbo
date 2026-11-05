@@ -117,14 +117,15 @@ internal static class ConfigCommands
     public static void ShowVersion()
     {
         var panel = new Panel(
-                """
+                $$"""
                 [bold]Limbo DPI Bypass Engine[/]
-                Version: 0.3.0
+                Version: {{AppInfo.VersionText}}
+                License: {{AppInfo.License}}
 
                 [bold]Components[/]
                   Limbo.Core       Bypass strategies, detection, radar
                   Limbo.Driver     WinDivert integration
-                  Limbo.Console    Command-line interface
+                  Limbo.Console    Interactive + scriptable CLI
 
                 [bold]Strategies[/]
                   TCP: Fragmentation (pri:100), SmartFrag (pri:90), Desync (pri:80), FakeTTL (pri:70)
@@ -134,12 +135,13 @@ internal static class ConfigCommands
                 [bold]Features[/]
                   Radar System (auto-detection of blocked domains)
                   ISP Behavior Analysis (RST injection, silent drops)
+                  Network Analysis (ISP lookup + live DPI behavior scan)
                   DNS over HTTPS (Cloudflare, Google, Quad9)
                   Bandwidth Monitoring
                   Per-domain profiles with wildcard support
                   Profile calibration
 
-                [grey]GitHub: https://github.com/umitkrkmz/Limbo[/]
+                [grey]GitHub: {{AppInfo.RepoUrl}}[/]
                 """)
             .Border(BoxBorder.Rounded)
             .Padding(1, 0);

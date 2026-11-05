@@ -8,7 +8,7 @@
 
 [![Build & Test](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml/badge.svg)](https://github.com/umitkrkmz/Limbo/actions/workflows/build.yml)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
-[![License](https://img.shields.io/badge/License-GPL%20v2-blue?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge&logo=windows)](https://www.microsoft.com/windows)
 
 [🇬🇧 English](README.md) | **🇹🇷 Türkçe**
@@ -121,9 +121,11 @@ Hazır derlenmiş ikili dosyalar [Releases](https://github.com/umitkrkmz/Limbo/r
 |---------|-------------|
 | `Limbo-Console-<sürüm>-win-x64.zip` | CLI uygulaması (self-contained, .NET kurulumu gerekmez) — **WinDivert dahildir**, doğrudan çalıştırılabilir |
 
-> **İndirdikten sonra:** ZIP'i çıkarıp `Limbo.Console.exe`'yi Yönetici olarak çalıştırmanız yeterli — `WinDivert.dll`, `WinDivert64.sys` ve WinDivert'in lisansı (`WinDivert-LICENSE.txt`) zaten pakette. Aşağıdaki manuel [WinDivert Kurulumu](#%EF%B8%8F-windivert-kurulumu-gerekli) adımları yalnızca **kaynak koddan derlerken** gerekir.
+> **İndirdikten sonra:** ZIP'i çıkarıp `Limbo.Console.exe`'yi çalıştırmanız yeterli — WinDivert yönetici yetkisi gerektirdiği için uygulama bu yetkiyi kendisi ister (UAC istemi). `WinDivert.dll` ve `WinDivert64.sys` lisans dosyalarıyla (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) birlikte zaten pakette. Aşağıdaki manuel [WinDivert Kurulumu](#%EF%B8%8F-windivert-kurulumu-gerekli) adımları yalnızca **kaynak koddan derlerken** gerekir.
 
-> **SHA-256 checksum** değerleri doğrulama için her release açıklamasında listelenir.
+> **SHA-256 doğrulaması:** her release'de ZIP'in yanında bir `.sha256` dosyası bulunur. PowerShell'de `Get-FileHash <dosya> -Algorithm SHA256` çıktısını onunla karşılaştırabilirsiniz.
+
+> **Dijital olarak imzalı değildir:** ilk açılışta SmartScreen "Windows bilgisayarınızı korudu" derse **Ek bilgi → Yine de çalıştır** ile devam edebilirsiniz. Windows 11'in **Akıllı Uygulama Denetimi** ise imzasız uygulamaları doğrudan engeller ve uygulama bazında istisna tanımaz; bu özellik *Açık* ise (Windows Güvenliği → Uygulama ve tarayıcı denetimi) Limbo çalışmaz. Özelliği kapatmak sadece Limbo'yu değil tüm uygulamaları etkiler ve tekrar açmak için Windows'u sıfırlamak gerekebilir — kapatmadan önce bunu tartın ya da [kaynak koddan derleyin](#kaynak-koddan-derleme).
 
 ---
 
@@ -132,9 +134,9 @@ Hazır derlenmiş ikili dosyalar [Releases](https://github.com/umitkrkmz/Limbo/r
 ### Ön Koşullar
 
 - Windows 10/11 64-bit
-- .NET 10.0 Runtime
-- **Yönetici (Administrator) yetkisi gerekli**
-- WinDivert 2.2.2 (aşağıya bakın)
+- **Yönetici (Administrator) yetkisi gerekli** — `Limbo.Console.exe` açılırken bu yetkiyi kendisi ister
+- Release ZIP'i için başka bir şey gerekmez (.NET runtime ve WinDivert pakette)
+- Kaynak koddan derlemek için: [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) ve WinDivert 2.2.2 (aşağıya bakın)
 
 ### ⚠️ WinDivert Kurulumu (Gerekli)
 
@@ -177,15 +179,25 @@ cd Limbo
 dotnet build -c Release
 ```
 
+Release'tekiyle aynı self-contained paketi (runtime gömülü tek bir `Limbo.Console.exe`, yanında WinDivert ve lisans dosyaları) üretmek için publish profilini kullanın:
+
+```bash
+dotnet publish src/Limbo.Console -p:PublishProfile=win-x64
+```
+
+Çıktı `src/Limbo.Console/bin/publish/win-x64/` klasörüne düşer.
+
 ### Çalıştırma
 
 ```powershell
-# Yönetici olarak çalıştırın - interaktif menüyü açar
+# Yönetici terminalinden - interaktif menüyü açar
 dotnet run --project src/Limbo.Console
 
 # Ya da betiklenebilir bir CLI olarak kullanın
 dotnet run --project src/Limbo.Console -- --help
 ```
+
+> `Limbo.Console.exe` yönetici yetkisi isteyen bir manifest taşıdığı için, yönetici **olmayan** bir terminalden `dotnet run` "İstenen işlem için yükseltme gerekiyor" hatasıyla başarısız olur. Terminali Yönetici olarak açın ya da WinDivert'e dokunmayan komutlar için derlenmiş DLL'i `dotnet` üzerinden çalıştırın (`dotnet src/Limbo.Console/bin/Debug/net10.0/Limbo.Console.dll --help`).
 
 ---
 
@@ -322,7 +334,7 @@ Limbo, paralel A + AAAA sorguları çalıştırır ve IPv6 adreslerine öncelik 
 | CLI | ✅ Var | ✅ İnteraktif + betiklenebilir |
 | Dil | C (C99) | C# (.NET 10) |
 | Platform | Windows | Windows |
-| Lisans | Apache 2.0 | GPL v2 |
+| Lisans | Apache 2.0 | GPL v3 (veya sonrası) |
 
 Limbo, **GoodbyeDPI'den ilham almıştır** ancak soruna farklı bir yaklaşımla yaklaşır: tek bir global yapılandırma yerine, otomatik tespit ve adaptif kalibrasyona sahip alan adı bazlı stratejiler kullanır.
 
@@ -399,11 +411,15 @@ Bir sorunuz, fikriniz var mı veya Limbo'yu nasıl kullandığınızı paylaşma
 
 ## 📄 Lisans
 
-Bu proje **GNU General Public License v2.0** altında lisanslanmıştır.
+Copyright (C) 2025-2026 Umit Korkmaz
 
-> Limbo, LGPL v3 / GPL v2 altında çifte lisanslı [WinDivert](https://github.com/basil00/WinDivert) kullandığından, lisans uyumluluğunu korumak için Limbo **GPL v2** altında dağıtılır.
+Bu proje **GNU General Public License v3.0 veya sonraki bir sürümü** (`GPL-3.0-or-later`) ile lisanslanmıştır: Free Software Foundation tarafından yayımlanan GPL'in 3. sürümü ya da (tercihinize bağlı olarak) daha sonraki herhangi bir sürümü kapsamında yeniden dağıtabilir ve/veya değiştirebilirsiniz. Bu program faydalı olması umuduyla dağıtılmaktadır, ancak **hiçbir garanti verilmez**; ayrıntılar için lisans metnine bakın.
 
-Tam lisans metni için [LICENSE](LICENSE) dosyasına bakın.
+> Limbo, LGPL v3 / GPL v2 çift lisanslı [WinDivert](https://github.com/basil00/WinDivert)'i **LGPL v3** koşulları altında kullanır (LGPL v3, GPL v3 ile uyumludur).
+
+> **Önceki sürümler:** v1.0.0 ve v1.1.0 **GPL v2** ile yayımlanmıştır ve o sürümlerin kopyaları GPL v2 altında kalmaya devam eder. GPL v3'e geçiş bir sonraki sürümden itibaren geçerlidir.
+
+Tam lisans metni için [LICENSE](LICENSE) dosyasına bakın. Release paketlerinde birlikte dağıtılan üçüncü taraf bileşenler (WinDivert, Spectre.Console, BouncyCastle, .NET runtime) ve lisansları [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) dosyasında listelenmiştir; bu dosya her release ZIP'inin içinde de bulunur.
 
 ---
 
