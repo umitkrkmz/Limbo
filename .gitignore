@@ -118,3 +118,6 @@ aux
 *.rej
 *.bak
 *.tmp
+
+# ─── Installer build output (Inno Setup) ─────────────────────────────────────
+installer/Output/

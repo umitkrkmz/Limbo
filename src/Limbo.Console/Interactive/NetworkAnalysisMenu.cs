@@ -59,6 +59,14 @@ internal static class NetworkAnalysisMenu
             return;
         }
 
+        using var interception = InstanceLock.TryAcquireInterception();
+        if (interception == null)
+        {
+            AnsiConsole.MarkupLine($"[red]{Loc.T("network.intercept_busy")}[/]");
+            InteractiveUi.PressEnterToContinue();
+            return;
+        }
+
         if (!SystemStatus.IsAdministrator())
         {
             AnsiConsole.MarkupLine($"[yellow]{Loc.T("network.requires_admin_note")}[/]");

@@ -117,11 +117,14 @@ Limbo/
 
 Hazır derlenmiş ikili dosyalar [Releases](https://github.com/umitkrkmz/Limbo/releases) sayfasında bulunur; [`release.yml`](.github/workflows/release.yml) tarafından otomatik olarak derlenip yayınlanır.
 
-| Paket | Açıklama |
+| Paket | Ne zaman? |
 |---------|-------------|
-| `Limbo-Console-<sürüm>-win-x64.zip` | CLI uygulaması (self-contained, .NET kurulumu gerekmez) — **WinDivert dahildir**, doğrudan çalıştırılabilir |
+| `Limbo-v<sürüm>-setup.exe` | **Önerilen.** Program Files'a kurulur, Başlat menüsüne eklenir ve Program Ekle/Kaldır'dan kaldırılabilir. Kaldırırken ayarlarınızın, profillerinizin ve radar kara listenizin (`%LOCALAPPDATA%\Limbo`) de silinip silinmeyeceğini sorar. |
+| `Limbo-Console-v<sürüm>-win-x64.zip` | **Taşınabilir.** İstediğiniz yere çıkartıp `Limbo.Console.exe`'yi çalıştırın; dosyalar aynı klasörde durmalı. |
 
-> **İndirdikten sonra:** ZIP'i çıkarıp `Limbo.Console.exe`'yi çalıştırmanız yeterli — WinDivert yönetici yetkisi gerektirdiği için uygulama bu yetkiyi kendisi ister (UAC istemi). `WinDivert.dll` ve `WinDivert64.sys` lisans dosyalarıyla (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) birlikte zaten pakette. Aşağıdaki manuel [WinDivert Kurulumu](#%EF%B8%8F-windivert-kurulumu-gerekli) adımları yalnızca **kaynak koddan derlerken** gerekir.
+İkisi de self-contained'dir (.NET kurulumu gerekmez) ve **WinDivert dahildir**. WinDivert yönetici yetkisi gerektirdiği için `Limbo.Console.exe` bu yetkiyi kendisi ister (UAC istemi). Lisans dosyaları (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) her ikisinde de bulunur. Aşağıdaki manuel [WinDivert Kurulumu](#%EF%B8%8F-windivert-kurulumu-gerekli) adımları yalnızca **kaynak koddan derlerken** gerekir.
+
+> **Aynı anda tek yakalayıcı:** motoru, kalibrasyonu ya da ağ taramasını aynı anda yalnızca bir Limbo kopyası çalıştırabilir; ikinci kopya bir mesajla reddeder (`--list-profiles` gibi salt okunur komutlar yine çalışır). Limbo, yalnızca Discord'a odaklı kardeş uygulaması [ZeroDivert](https://github.com/umitkrkmz/ZeroDivert) çalışıyorsa da uyarır; ikisi de Discord'un TLS el sıkışmalarını değiştirdiği için birini ya da diğerini kullanın.
 
 > **SHA-256 doğrulaması:** her release'de ZIP'in yanında bir `.sha256` dosyası bulunur. PowerShell'de `Get-FileHash <dosya> -Algorithm SHA256` çıktısını onunla karşılaştırabilirsiniz.
 
@@ -186,6 +189,17 @@ dotnet publish src/Limbo.Console -p:PublishProfile=win-x64
 ```
 
 Çıktı `src/Limbo.Console/bin/publish/win-x64/` klasörüne düşer.
+
+**Kurulum dosyası (isteğe bağlı):** [Inno Setup 6](https://jrsoftware.org/isinfo.php) kuruluysa, yukarıdaki publish komutundan sonra çalıştırın. Kurulum dosyası `installer\Output\` klasörüne düşer:
+
+```powershell
+# Inno Setup "herkes için" kurulduysa:
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+# Sadece kendi kullanıcınız için kurulduysa (ör. winget --scope user):
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+```
+
+**Yeni sürüm yayınlamak:** üç csproj'daki `<Version>` değerini güncelleyin, CHANGELOG'a sürüm başlığını ekleyin, sonra `v` ile başlayan bir tag pushlayın (`git tag v1.2.0 && git push origin v1.2.0`). [Release iş akışı](.github/workflows/release.yml) tag'in sürümle uyuştuğunu kontrol eder, kurulum dosyasını ve taşınabilir ZIP'i SHA-256'larıyla birlikte derler ve **taslak (draft)** bir GitHub Release oluşturur; notları düzenleyip **Publish**'e basmak size kalır. `v1.2.0-rc.1` gibi ekli tag'ler pre-release olarak açılır.
 
 ### Çalıştırma
 

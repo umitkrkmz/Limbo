@@ -160,6 +160,7 @@ internal static class Loc
         ["network.local_interface"] = ("Local Interface", "Yerel Arayüz"),
         ["network.local_dns"] = ("Local DNS Servers", "Yerel DNS Sunucuları"),
         ["network.domain_prompt"] = ("Domain to scan (empty = skip):", "Taranacak domain (boş = atla):"),
+        ["network.intercept_busy"] = ("Another Limbo instance is already intercepting traffic (run, calibration or network scan). Stop it first - the scan would see packets that copy is rewriting.", "Başka bir Limbo kopyası zaten trafiği yakalıyor (çalıştırma, kalibrasyon ya da ağ taraması). Önce onu durdurun - aksi halde tarama o kopyanın değiştirdiği paketleri görür."),
         ["network.requires_admin_note"] = ("Administrator privileges required for the live behavior scan (RST injection / silent drop detection) - showing network identity only.", "Canlı davranış taraması (RST enjeksiyonu / sessiz düşürme tespiti) için yönetici yetkisi gerekiyor - sadece ağ kimliği gösteriliyor."),
         ["network.scanning"] = ("Scanning...", "Taranıyor..."),
         ["network.dns_tamper_yes"] = ("DNS tampering suspected (system DNS differs from DoH)", "DNS tamper şüphesi (sistem DNS, DoH'tan farklı)"),

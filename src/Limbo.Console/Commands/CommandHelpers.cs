@@ -1,6 +1,7 @@
 using Limbo.Core.Bypass;
 using Limbo.Core.Config;
 using Limbo.Core.Profiles;
+using Spectre.Console;
 
 namespace Limbo.Console.Commands;
 
@@ -11,6 +12,18 @@ namespace Limbo.Console.Commands;
 /// </summary>
 internal static class CommandHelpers
 {
+    public static void ReportInterceptionBusy()
+    {
+        AnsiConsole.MarkupLine("[red]Another Limbo instance is already intercepting traffic[/] (run, calibration or network scan).");
+        AnsiConsole.MarkupLine("  Stop it first (Ctrl+C in its window) - two interceptors would both rewrite the same packets.");
+    }
+
+    public static void WarnIfZeroDivertRunning()
+    {
+        if (!InstanceLock.IsZeroDivertRunning()) return;
+        AnsiConsole.MarkupLine("[yellow]ZeroDivert is also running.[/] Both apps rewrite Discord's TLS handshakes; running them together can break Discord connections or skew calibration results. Consider stopping one of them.");
+    }
+
     public static void LoadProfilesFromConfig(ProfileManager manager, LimboConfig config)
     {
         foreach (var profileConfig in config.Profiles)

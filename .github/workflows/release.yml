@@ -3,7 +3,7 @@
 #
 #   git tag v1.2.0 && git push origin v1.2.0
 #
-# The draft gets the zip + a .sha256 file attached; edit the release notes and
+# The draft gets the installer + portable zip (each with a .sha256 file) attached; edit the release notes and
 # press "Publish" on GitHub when ready. Tags with a suffix (v1.2.0-rc.1) become
 # pre-releases, which is handy for testing this workflow itself.
 name: Release
@@ -37,6 +37,9 @@ jobs:
           if ($env:TAG -ne "v$version" -and -not $env:TAG.StartsWith("v$version-")) {
             throw "Tag $env:TAG does not match <Version>$version</Version> in Limbo.Console.csproj"
           }
+          # 1.2.0-rc.1 for names, 1.2.0 for the installer's Windows file version.
+          "APP_VERSION=$($env:TAG.Substring(1))" >> $env:GITHUB_ENV
+          "APP_NUMERIC_VERSION=$version" >> $env:GITHUB_ENV
 
       # WinDivert binaries aren't committed to this repo; fetch the official
       # pre-built release so the package ships the real driver. Its license
@@ -84,6 +87,22 @@ jobs:
           "ZIP_NAME=$name.zip" >> $env:GITHUB_ENV
           "ZIP_SHA256=$hash" >> $env:GITHUB_ENV
 
+      - name: Build installer (Inno Setup) + SHA-256
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DAppNumericVersion=$env:APP_NUMERIC_VERSION" installer/Limbo.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          $setup = "Limbo-$env:TAG-setup.exe"
+          Move-Item "installer/Output/$setup" $setup
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash
+          "$hash  $setup" | Out-File -Encoding ascii "$setup.sha256"
+          "SETUP_NAME=$setup" >> $env:GITHUB_ENV
+          "SETUP_SHA256=$hash" >> $env:GITHUB_ENV
+
       - name: Create draft release
         shell: pwsh
         env:
@@ -94,17 +113,22 @@ jobs:
 
           ## Install
 
-          Extract ``$env:ZIP_NAME`` and run ``Limbo.Console.exe`` (it asks for Administrator rights itself; WinDivert needs them). No .NET install required; the runtime is bundled. WinDivert and all third-party license notices are included in the ZIP.
+          - **Recommended:** run ``$env:SETUP_NAME``. Installs to Program Files, adds a Start menu entry, and can be removed from Add/Remove Programs.
+          - **Portable:** extract ``$env:ZIP_NAME`` and run ``Limbo.Console.exe``.
+
+          Either way the app asks for Administrator rights itself (WinDivert needs them). No .NET install required; the runtime is bundled. WinDivert and all third-party license notices are included.
 
           The app is not code-signed: if SmartScreen warns on first launch, choose **More info > Run anyway**. Windows 11's **Smart App Control** blocks unsigned apps entirely; see the README.
 
           **SHA-256**
           ``````
+          $env:SETUP_SHA256  $env:SETUP_NAME
           $env:ZIP_SHA256  $env:ZIP_NAME
           ``````
           "@
           Set-Content -Path release-notes.md -Value $notes
 
+          $files = $env:SETUP_NAME, "$env:SETUP_NAME.sha256", $env:ZIP_NAME, "$env:ZIP_NAME.sha256"
           $flags = @("--draft", "--title", "Limbo $env:TAG", "--notes-file", "release-notes.md")
           if ($env:TAG.Contains("-")) { $flags += "--prerelease" }
-          gh release create $env:TAG $env:ZIP_NAME "$env:ZIP_NAME.sha256" @flags
+          gh release create $env:TAG @files @flags

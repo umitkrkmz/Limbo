@@ -1,3 +1,4 @@
+using Limbo.Core.Bypass;
 using Limbo.Core.Config;
 using Limbo.Core.Engine;
 using Limbo.Core.Logging;
@@ -41,6 +42,22 @@ internal static class CalibrateCommand
     public static async Task<CalibrationResult> CalibrateAsync(LimboConfig config, LimboLogger logger, string domain, int port = 443)
     {
         AnsiConsole.MarkupLine($"[bold]Calibrating bypass for:[/] {domain.EscapeMarkup()}:{port}");
+
+        using var interception = InstanceLock.TryAcquireInterception();
+        if (interception == null)
+        {
+            CommandHelpers.ReportInterceptionBusy();
+            return new CalibrationResult
+            {
+                Domain = domain,
+                Success = false,
+                BestMethod = BypassMethod.None,
+                LatencyMs = 0,
+                Message = "Another Limbo instance is intercepting traffic"
+            };
+        }
+
+        CommandHelpers.WarnIfZeroDivertRunning();
 
         if (!SystemStatus.IsAdministrator())
         {

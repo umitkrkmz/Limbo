@@ -28,6 +28,15 @@ internal static class RunCommand
 
         AnsiConsole.MarkupLine("[green]Running with Administrator privileges[/]");
 
+        using var interception = InstanceLock.TryAcquireInterception();
+        if (interception == null)
+        {
+            CommandHelpers.ReportInterceptionBusy();
+            return 1;
+        }
+
+        CommandHelpers.WarnIfZeroDivertRunning();
+
         var profileManager = new ProfileManager();
         CommandHelpers.LoadProfilesFromConfig(profileManager, config);
 

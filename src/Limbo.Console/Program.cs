@@ -113,6 +113,7 @@ class Program
     static async Task<int> Main(string[] args)
     {
         System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+        InstanceLock.MarkRunning();
 
         var argList = args.ToList();
         var verbose = argList.Remove("-v") || argList.Remove("--verbose");

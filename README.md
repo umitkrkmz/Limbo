@@ -117,11 +117,14 @@ Limbo/
 
 Pre-built binaries are available on the [Releases](https://github.com/umitkrkmz/Limbo/releases) page, built and published automatically by [`release.yml`](.github/workflows/release.yml).
 
-| Package | Description |
+| Package | When to use |
 |---------|-------------|
-| `Limbo-Console-<version>-win-x64.zip` | CLI application (self-contained, no .NET install needed) — **WinDivert is bundled**, ready to run |
+| `Limbo-v<version>-setup.exe` | **Recommended.** Installs to Program Files, adds a Start menu entry, and can be removed from Add/Remove Programs. Uninstalling asks whether to also delete your settings, profiles and radar blacklist (`%LOCALAPPDATA%\Limbo`). |
+| `Limbo-Console-v<version>-win-x64.zip` | **Portable.** Extract anywhere and run `Limbo.Console.exe`; keep the files together in one folder. |
 
-> **After downloading:** Extract the ZIP and run `Limbo.Console.exe` — it asks for Administrator rights itself (UAC prompt), since WinDivert needs them. `WinDivert.dll` and `WinDivert64.sys` are already included, along with the license files (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`). The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
+Both are self-contained (no .NET install needed) and have **WinDivert bundled**. `Limbo.Console.exe` asks for Administrator rights itself (UAC prompt), since WinDivert needs them. The license files (`LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `LICENSE-WinDivert.txt`) are included in both. The manual [WinDivert Setup](#%EF%B8%8F-windivert-setup-required) steps below are only needed when **building from source**.
+
+> **One interceptor at a time:** only one Limbo copy can run the engine, a calibration or a network scan at once; a second one refuses with a message (read-only commands like `--list-profiles` still work alongside it). Limbo also warns if its Discord-only sister app [ZeroDivert](https://github.com/umitkrkmz/ZeroDivert) is running, since both rewrite Discord's TLS handshakes; run one or the other.
 
 > **SHA-256 checksums:** each release has a `.sha256` file next to the ZIP. Compare it with the output of `Get-FileHash <file> -Algorithm SHA256` in PowerShell.
 
@@ -186,6 +189,17 @@ dotnet publish src/Limbo.Console -p:PublishProfile=win-x64
 ```
 
 Output lands in `src/Limbo.Console/bin/publish/win-x64/`.
+
+**Installer (optional):** with [Inno Setup 6](https://jrsoftware.org/isinfo.php) installed, run this after the publish command above. The setup file lands in `installer\Output\`:
+
+```powershell
+# Inno Setup installed for all users:
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+# Installed for your user only (e.g. winget --scope user):
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.0 installer\Limbo.iss
+```
+
+**Releasing:** bump `<Version>` in the three csproj files, add the version heading to the CHANGELOG, then push a `v`-prefixed tag (`git tag v1.2.0 && git push origin v1.2.0`). The [release workflow](.github/workflows/release.yml) checks the tag matches the version, builds the installer and the portable ZIP with their SHA-256s, and creates a **draft** GitHub Release; editing the notes and pressing **Publish** is up to you. Suffixed tags like `v1.2.0-rc.1` become pre-releases.
 
 ### Run
 
