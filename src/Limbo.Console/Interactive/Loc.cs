@@ -38,7 +38,71 @@ internal static class Loc
         ["main_menu.settings"] = ("General Settings", "Genel Ayarlar"),
         ["main_menu.network_analysis"] = ("Network Analysis", "Ağ Analizi"),
         ["main_menu.about"] = ("About", "Hakkında"),
+        ["main_menu.help"] = ("How to Use", "Nasıl Kullanılır"),
+        ["main_menu.switch_mode"] = ("Switch Mode → {0}", "Modu Değiştir → {0}"),
+        ["main_menu.group_engine"] = ("ENGINE", "MOTOR"),
+        ["main_menu.group_config"] = ("CONFIGURATION", "YAPILANDIRMA"),
+        ["main_menu.group_tools"] = ("TOOLS", "ARAÇLAR"),
+        ["status.network"] = ("Network / DNS", "Ağ / DNS"),
+        ["status.profiles_radar"] = ("Profiles / Radar", "Profil / Radar"),
+        ["status.profiles_radar_value"] = ("{0} profiles · {1} detected · Radar {2}", "{0} profil · {1} tespit · Radar {2}"),
         ["main_menu.exit"] = ("Exit", "Çıkış"),
+
+        // How to use
+        ["help.subtitle"] = ("How to Use", "Nasıl Kullanılır"),
+        ["help.prompt"] = ("Choose a topic:", "Bir konu seçin:"),
+        ["help.topic.quickstart"] = ("Quick start", "Hızlı başlangıç"),
+        ["help.topic.modes"] = ("Modes: profiles only vs global", "Modlar: sadece profiller ve genel"),
+        ["help.topic.profiles"] = ("Profiles and excluding a site", "Profiller ve bir siteyi hariç tutma"),
+        ["help.topic.dns"] = ("DNS over HTTPS", "DNS over HTTPS"),
+        ["help.topic.troubleshooting"] = ("A site still won't open", "Bir site hâlâ açılmıyor"),
+        ["help.text.quickstart"] = (
+            "[bold]1.[/] Run Limbo as Administrator (it asks by itself; WinDivert needs it).\n" +
+            "[bold]2.[/] Check the status panel: [green]DNS over HTTPS[/] should be on.\n" +
+            "[bold]3.[/] Choose [bold]Start Engine[/], then open Discord or the blocked site.\n\n" +
+            "If something still doesn't open, switch to [bold]global mode[/] from the main menu, or use [bold]Calibration[/] to find the best method for that site.\n" +
+            "Press [bold]Ctrl+C[/] to stop the engine.",
+            "[bold]1.[/] Limbo'yu yönetici olarak çalıştırın (kendisi ister; WinDivert bunu gerektirir).\n" +
+            "[bold]2.[/] Durum paneline bakın: [green]DNS over HTTPS[/] açık olmalı.\n" +
+            "[bold]3.[/] [bold]Motoru Başlat[/]'ı seçin, ardından Discord'u ya da engelli siteyi açın.\n\n" +
+            "Yine açılmayan bir şey olursa ana menüden [bold]genel moda[/] geçin ya da o site için en iyi yöntemi bulmak üzere [bold]Kalibrasyon[/]'u kullanın.\n" +
+            "Motoru durdurmak için [bold]Ctrl+C[/]."),
+        ["help.text.modes"] = (
+            "[bold]Profiles only[/] (default): Limbo touches only domains that have a profile, or that Radar detected as blocked. Everything else passes untouched - the least intrusive option.\n\n" +
+            "[bold]Global[/] (GoodbyeDPI-style): every HTTPS/HTTP connection without a profile gets the default method. Use it when you don't know which sites are blocked, or many of them are.\n\n" +
+            "The default method is set in [bold]Adaptive Engine (Radar) → Change Default Method[/]. Switch modes from the main menu, or for a single run with [grey]limbo run --global[/].",
+            "[bold]Sadece profiller[/] (varsayılan): Limbo yalnızca profili olan ya da Radar'ın engellendiğini tespit ettiği alan adlarına dokunur. Geri kalan her şey olduğu gibi geçer - en az müdahaleli seçenek.\n\n" +
+            "[bold]Genel[/] (GoodbyeDPI gibi): profili olmayan her HTTPS/HTTP bağlantısına varsayılan yöntem uygulanır. Hangi sitelerin engelli olduğunu bilmediğinizde ya da çok sayıda site engelliyse kullanın.\n\n" +
+            "Varsayılan yöntem [bold]Adaptif Motor (Radar) → Varsayılan Yöntemi Değiştir[/]'den ayarlanır. Modu ana menüden, tek bir çalıştırma içinse [grey]limbo run --global[/] ile değiştirebilirsiniz."),
+        ["help.text.profiles"] = (
+            "A profile says which bypass method (and parameters) a domain gets. [grey]*.discord.com[/] covers discord.com itself and all its subdomains.\n\n" +
+            "[bold]Excluding a site:[/] if global mode breaks a site, give it a profile with method [bold]None[/] - in Profile Management, or [grey]limbo add-profile *.site.com None[/]. Profiles always take priority, in both modes.\n\n" +
+            "Not sure which method works? [bold]Calibration[/] tests them against the site and can save the best one as a profile.",
+            "Profil, bir alan adına hangi bypass yönteminin (ve parametrelerin) uygulanacağını belirler. [grey]*.discord.com[/] hem discord.com'un kendisini hem de tüm alt alanlarını kapsar.\n\n" +
+            "[bold]Bir siteyi hariç tutmak:[/] genel mod bir siteyi bozuyorsa ona yöntemi [bold]None[/] olan bir profil verin - Profil Yönetimi'nden ya da [grey]limbo add-profile *.site.com None[/] ile. Profiller her iki modda da her zaman önceliklidir.\n\n" +
+            "Hangi yöntemin çalıştığından emin değil misiniz? [bold]Kalibrasyon[/] yöntemleri siteye karşı dener ve en iyisini profil olarak kaydedebilir."),
+        ["help.text.dns"] = (
+            "Some ISPs also [bold]poison DNS[/]: a blocked name resolves to a block-page address (e.g. discord.com → 195.175.254.2), and the connection goes to the wrong server however well the handshake is hidden.\n\n" +
+            "With DoH on, while the engine runs, [bold]every app's DNS queries (IPv4 and IPv6)[/] are answered over an encrypted server instead. System DNS settings aren't changed.\n\n" +
+            "On the live dashboard, a growing [bold]DNS via DoH[/] count means it's working; queries shown as [yellow]plain[/] fell back to normal DNS because the DoH server couldn't be reached.\n\n" +
+            "Settings: [bold]DNS Settings → Toggle DoH / Choose Provider[/].",
+            "Bazı İSS'ler [bold]DNS'i de zehirler[/]: engelli bir ad, engelleme sayfasının adresine çözülür (örn. discord.com → 195.175.254.2) ve el sıkışma ne kadar iyi gizlenirse gizlensin bağlantı yanlış sunucuya gider.\n\n" +
+            "DoH açıkken, motor çalıştığı sürece [bold]tüm uygulamaların DNS sorguları (IPv4 ve IPv6)[/] bunun yerine şifreli bir sunucu üzerinden cevaplanır. Sistem DNS ayarlarına dokunulmaz.\n\n" +
+            "Canlı panelde [bold]DNS via DoH[/] sayısı artıyorsa çalışıyor demektir; [yellow]plain[/] olarak görünen sorgular DoH sunucusuna ulaşılamadığı için normal DNS'e dönmüştür.\n\n" +
+            "Ayarlar: [bold]DNS Ayarları → DoH Aç/Kapa / Sağlayıcı Seç[/]."),
+        ["help.text.troubleshooting"] = (
+            "Check in this order:\n\n" +
+            "[bold]1. DNS.[/] With the engine running, run [grey]nslookup discord.com[/] in a command prompt. A block-page address (like 195.175.254.2) means DNS is poisoned - make sure DoH is on.\n" +
+            "[bold]2. Windows DNS settings.[/] On Windows 11, the \"DNS settings for all Wi-Fi networks\" option (Settings → Wi-Fi) overrides the per-network setting. The DNS Limbo shows is the one Windows actually uses.\n" +
+            "[bold]3. IPv6.[/] Routers often hand out their own IPv6 DNS server. With DoH on, Limbo covers it too - no need to disable IPv6.\n" +
+            "[bold]4. Method.[/] Switch to global mode, or run Calibration for that site.\n" +
+            "[bold]5. How it's blocked.[/] Network Analysis shows whether the connection is cut by RST injection or silently dropped.",
+            "Şu sırayla kontrol edin:\n\n" +
+            "[bold]1. DNS.[/] Motor çalışırken komut isteminde [grey]nslookup discord.com[/] çalıştırın. Engelleme sayfası adresi (195.175.254.2 gibi) dönüyorsa DNS zehirlenmiştir - DoH'un açık olduğundan emin olun.\n" +
+            "[bold]2. Windows DNS ayarları.[/] Windows 11'de \"Tüm Wi-Fi ağlarının DNS ayarları\" seçeneği (Ayarlar → Wi-Fi) ağ başına ayarı geçersiz kılar. Limbo'nun gösterdiği DNS, Windows'un gerçekte kullandığıdır.\n" +
+            "[bold]3. IPv6.[/] Modemler çoğu zaman kendi IPv6 DNS sunucularını dağıtır. DoH açıkken Limbo bunu da kapsar - IPv6'yı kapatmanıza gerek yok.\n" +
+            "[bold]4. Yöntem.[/] Genel moda geçin ya da o site için Kalibrasyon çalıştırın.\n" +
+            "[bold]5. Nasıl engelleniyor.[/] Ağ Analizi, bağlantının RST enjeksiyonuyla mı kesildiğini yoksa sessizce mi düşürüldüğünü gösterir."),
 
         // About + update check
         ["about.subtitle"] = ("About", "Hakkında"),
@@ -64,15 +128,10 @@ internal static class Loc
         ["status.admin"] = ("Administrator", "Yönetici"),
         ["status.admin_yes"] = ("✓ Yes", "✓ Evet"),
         ["status.admin_no"] = ("✗ No", "✗ Hayır"),
-        ["status.interface"] = ("Network Interface", "Ağ Arayüzü"),
         ["status.not_found"] = ("(not found)", "(bulunamadı)"),
-        ["status.system_dns"] = ("System DNS", "Sistem DNS"),
-        ["status.radar_engine"] = ("Adaptive Engine", "Adaptif Motor"),
         ["status.on"] = ("On", "Açık"),
         ["status.off"] = ("Off", "Kapalı"),
         ["status.doh"] = ("DNS over HTTPS", "DNS over HTTPS"),
-        ["status.profile_count"] = ("Profile Count", "Profil Sayısı"),
-        ["status.radar_count"] = ("Radar Detections", "Radar Tespiti"),
 
         // Calibration
         ["calibrate.subtitle"] = ("Calibration", "Kalibrasyon"),

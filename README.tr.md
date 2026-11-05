@@ -284,9 +284,11 @@ limbo radar-import blocked.txt
 
 ## 🖥 İnteraktif Menü
 
-`limbo` argümansız çalıştırıldığında, Spectre.Console üzerine kurulu tam bir interaktif dashboard açılır:
+`limbo` argümansız çalıştırıldığında, Spectre.Console üzerine kurulu tam bir interaktif dashboard açılır. Durum paneli (mod, yönetici, DoH, ağ/DNS, profil/Radar) logonun yanında durur ve menü **Motor / Yapılandırma / Araçlar / Limbo** olarak gruplanır; böylece ekranın tamamı varsayılan 30 satırlık konsol penceresine sığar:
 
-- **Motoru Başlat** — bypass motoru çalışırken canlı güncellenen trafik tablosu (paketler, eşleşen/değiştirilen, bant genişliği)
+- **Motoru Başlat** — hangi modda başlayacağını gösterir; bypass motoru çalışırken canlı güncellenen trafik tablosu (paketler, eşleşen/değiştirilen, bant genişliği, DoH ile cevaplanan DNS)
+- **Modu Değiştir** — *sadece profiller* ile *genel* (GoodbyeDPI tarzı) mod arasında tek adımda geçiş
+- **Nasıl Kullanılır** — yerleşik rehber: hızlı başlangıç, modlar, profiller ve hariç tutma, DNS over HTTPS ve sorun giderme listesi
 - **Profil Yönetimi** — seçilen yönteme özel parametreleri soran bir sihirbazla profil listeleme/ekleme/düzenleme/silme
 - **DNS Ayarları** — DoH aç/kapa, sağlayıcı seç (Cloudflare/Google/Quad9/özel), sistemin gerçek yapılandırılmış DNS sunucularını görme, canlı çözümleme testi
 - **Adaptif Motor (Radar)** — otomatik tespiti aç/kapa, **genel modu** aç/kapa, tespit edilen alan adlarında ve genel modda kullanılan varsayılan bypass yöntemini (ve parametrelerini) seçme, tespitleri listele/içe-dışa aktar/temizle

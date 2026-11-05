@@ -101,8 +101,8 @@ internal static class RadarMenu
     }
 
     public static string FormatMode(LimboConfig config) => config.GlobalMode
-        ? $"[yellow]{Loc.T("status.mode_global")}[/]"
-        : Loc.T("status.mode_profiles");
+        ? $"[yellow]● {Loc.T("status.mode_global")}[/]"
+        : $"○ {Loc.T("status.mode_profiles")}";
 
     /// <summary>
     /// Lets the user pick which bypass method Radar applies to newly

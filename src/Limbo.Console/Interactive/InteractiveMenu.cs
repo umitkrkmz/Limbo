@@ -24,66 +24,59 @@ internal static class InteractiveMenu
             InteractiveUi.SafeClear();
             InteractiveUi.WriteHeader(Loc.T("main_menu.subtitle"), BuildStatusPanel(config));
 
-            var choice = AnsiConsole.Prompt(
-                new SelectionPrompt<string>()
-                    .Title(Loc.T("main_menu.prompt"))
-                    .PageSize(10)
-                    .AddChoices(
-                        Loc.T("main_menu.start_engine"),
-                        Loc.T("main_menu.profiles"),
-                        Loc.T("main_menu.dns"),
-                        Loc.T("main_menu.radar"),
-                        Loc.T("main_menu.network_analysis"),
-                        Loc.T("main_menu.calibrate"),
-                        Loc.T("main_menu.test"),
-                        Loc.T("main_menu.settings"),
-                        Loc.T("main_menu.about"),
-                        Loc.T("main_menu.exit")));
+            var modeText = config.GlobalMode ? Loc.T("status.mode_global") : Loc.T("status.mode_profiles");
+            var otherModeText = config.GlobalMode ? Loc.T("status.mode_profiles") : Loc.T("status.mode_global");
 
-            if (choice == Loc.T("main_menu.start_engine"))
+            var actions = new Dictionary<string, Func<Task<bool>>>();
+            string Item(string icon, string label, Func<Task<bool>> action)
             {
-                InteractiveUi.SafeClear();
-                await RunCommand.RunAsync(config, logger);
-                InteractiveUi.PressEnterToContinue();
+                var text = $"{icon}  {label}";
+                actions[text] = action;
+                return text;
             }
-            else if (choice == Loc.T("main_menu.profiles"))
-            {
-                ProfileMenu.Show(config);
-            }
-            else if (choice == Loc.T("main_menu.dns"))
-            {
-                DnsMenu.Show(config);
-            }
-            else if (choice == Loc.T("main_menu.radar"))
-            {
-                RadarMenu.Show(config);
-            }
-            else if (choice == Loc.T("main_menu.network_analysis"))
-            {
-                await NetworkAnalysisMenu.ShowAsync();
-            }
-            else if (choice == Loc.T("main_menu.calibrate"))
-            {
-                await RunCalibration(config, logger);
-            }
-            else if (choice == Loc.T("main_menu.test"))
-            {
-                await RunConnectionTest(config);
-            }
-            else if (choice == Loc.T("main_menu.settings"))
-            {
-                ShowGeneralSettings(config);
-            }
-            else if (choice == Loc.T("main_menu.about"))
-            {
-                AboutMenu.Show();
-            }
-            else
-            {
-                return 0;
-            }
+            Func<Task<bool>> Run(Action action) => () => { action(); return Task.FromResult(true); };
+
+            var prompt = new SelectionPrompt<string>()
+                .Title(Loc.T("main_menu.prompt"))
+                .Mode(SelectionMode.Leaf)
+                .PageSize(20)
+                .HighlightStyle(new Style(Color.SteelBlue1))
+                .AddChoiceGroup($"[grey]{Loc.T("main_menu.group_engine")}[/]",
+                    Item("▶", $"{Loc.T("main_menu.start_engine")}  [grey]({modeText.EscapeMarkup()})[/]", async () =>
+                    {
+                        InteractiveUi.SafeClear();
+                        await RunCommand.RunAsync(config, logger);
+                        InteractiveUi.PressEnterToContinue();
+                        return true;
+                    }),
+                    Item("⇄", Loc.T("main_menu.switch_mode", otherModeText.EscapeMarkup()), Run(() =>
+                    {
+                        config.GlobalMode = !config.GlobalMode;
+                        ConfigManager.Save(config);
+                    })))
+                .AddChoiceGroup($"[grey]{Loc.T("main_menu.group_config")}[/]",
+                    Item("◆", Loc.T("main_menu.profiles"), Run(() => ProfileMenu.Show(config))),
+                    Item("◇", Loc.T("main_menu.dns"), Run(() => DnsMenu.Show(config))),
+                    Item("◎", Loc.T("main_menu.radar"), Run(() => RadarMenu.Show(config))),
+                    Item("⚙", Loc.T("main_menu.settings"), Run(() => ShowGeneralSettings(config))))
+                .AddChoiceGroup($"[grey]{Loc.T("main_menu.group_tools")}[/]",
+                    Item("◐", Loc.T("main_menu.network_analysis"), async () => { await NetworkAnalysisMenu.ShowAsync(); return true; }),
+                    Item("↻", Loc.T("main_menu.calibrate"), async () => { await RunCalibration(config, logger); return true; }),
+                    Item("⇆", Loc.T("main_menu.test"), async () => { await RunConnectionTest(config); return true; }))
+                .AddChoiceGroup("[grey]LIMBO[/]",
+                    Item("?", Loc.T("main_menu.help"), Run(HelpMenu.Show)),
+                    Item("ℹ", Loc.T("main_menu.about"), Run(AboutMenu.Show)),
+                    Item("✕", Loc.T("main_menu.exit"), () => Task.FromResult(false)));
+
+            var keepGoing = await actions[AnsiConsole.Prompt(prompt)]();
+            if (!keepGoing) return 0;
         }
     }
+
+    // Logo panel is 39 columns wide; the status panel next to it gets the
+    // golden-ratio share (39 x 1.618 = 63) so the eye lands on the status first.
+    private const int LogoPanelWidth = 39;
+    private const int StatusPanelWidth = 63;
 
     internal static Table BuildStatusPanel(LimboConfig config)
     {
@@ -96,21 +89,30 @@ internal static class InteractiveMenu
         var radarCount = new BlacklistManager().GetAllBlacklisted().Count;
 
         var interfaceText = netInfo?.Name ?? Loc.T("status.not_found");
-        var dnsText = netInfo.HasValue && netInfo.Value.DnsServers.Count > 0
-            ? string.Join(", ", netInfo.Value.DnsServers)
-            : Loc.T("status.not_found");
+        // Windows can report the same server twice; the "%13" scope suffix of a
+        // link-local router address only costs width here.
+        var dnsServers = netInfo?.DnsServers.Select(s => s.Split('%')[0]).Distinct().ToList() ?? [];
+        var dnsText = dnsServers.Count > 0 ? string.Join(", ", dnsServers) : Loc.T("status.not_found");
+        var dohHost = Uri.TryCreate(config.Dns.DoHServer, UriKind.Absolute, out var dohUri) ? dohUri.Host : config.Dns.DoHServer;
 
-        var table = new Table().Border(TableBorder.Rounded).HideHeaders();
+        var table = new Table().Border(TableBorder.Rounded).BorderColor(Color.SteelBlue1).HideHeaders();
         table.AddColumn("Key");
         table.AddColumn("Value");
-        table.AddRow(Loc.T("status.admin"), isAdmin ? $"[green]{Loc.T("status.admin_yes")}[/]" : $"[red]{Loc.T("status.admin_no")}[/]");
-        table.AddRow(Loc.T("status.interface"), interfaceText.EscapeMarkup());
-        table.AddRow(Loc.T("status.system_dns"), dnsText.EscapeMarkup());
+        var availableWidth = AnsiConsole.Profile.Width - LogoPanelWidth - 1;
+        if (availableWidth >= 40)
+            table.Width(Math.Min(StatusPanelWidth, availableWidth));
+
         table.AddRow(Loc.T("status.mode"), RadarMenu.FormatMode(config));
-        table.AddRow(Loc.T("status.radar_engine"), config.EnableRadar ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]");
-        table.AddRow(Loc.T("status.doh"), config.Dns.UseDoH ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]");
-        table.AddRow(Loc.T("status.profile_count"), profileCount.ToString());
-        table.AddRow(Loc.T("status.radar_count"), radarCount.ToString());
+        table.AddRow(Loc.T("status.admin"), isAdmin ? $"[green]{Loc.T("status.admin_yes")}[/]" : $"[red]{Loc.T("status.admin_no")}[/]");
+        table.AddRow(Loc.T("status.doh"), config.Dns.UseDoH
+            ? $"[green]{Loc.T("status.on")}[/] [grey]· {dohHost.EscapeMarkup()}[/]"
+            : $"[grey]{Loc.T("status.off")}[/]");
+        table.AddRow(Loc.T("status.network"), $"{interfaceText.EscapeMarkup()} [grey]·[/] {dnsText.EscapeMarkup()}");
+        table.AddRow(Loc.T("status.profiles_radar"), Loc.T(
+            "status.profiles_radar_value",
+            profileCount,
+            radarCount,
+            config.EnableRadar ? $"[green]{Loc.T("status.on")}[/]" : $"[grey]{Loc.T("status.off")}[/]"));
         if (UpdateChecker.Available is { } update)
         {
             table.AddRow(Loc.T("status.update"), $"[yellow]{Loc.T("status.update_value", update.LatestTag.EscapeMarkup())}[/]");

@@ -284,9 +284,11 @@ limbo radar-import blocked.txt
 
 ## 🖥 Interactive Menu
 
-Running `limbo` with no arguments opens a full interactive dashboard built on Spectre.Console:
+Running `limbo` with no arguments opens a full interactive dashboard built on Spectre.Console. The status panel (mode, admin, DoH, network/DNS, profiles/Radar) sits beside the logo and the menu is grouped into **Engine / Configuration / Tools / Limbo**, so the whole screen fits a default 30-row console window:
 
-- **Start Engine** — live-updating traffic table (packets, matched/modified, bandwidth) while the bypass engine runs
+- **Start Engine** — shows the mode it will start in; live-updating traffic table (packets, matched/modified, bandwidth, DNS answered via DoH) while the bypass engine runs
+- **Switch Mode** — one step between *profiles only* and *global* (GoodbyeDPI-style) mode
+- **How to Use** — built-in guide: quick start, modes, profiles and exclusions, DNS over HTTPS, and a troubleshooting checklist
 - **Profile Management** — list / add / edit / delete profiles through a wizard that only asks for the parameters relevant to the chosen method
 - **DNS Settings** — toggle DoH, pick a provider (Cloudflare/Google/Quad9/custom), see the system's actual configured DNS servers, test resolution live
 - **Adaptive Engine (Radar)** — turn auto-detection on/off, turn **global mode** on/off, choose the default bypass method (and parameters) used for detected domains and in global mode, list/import/export/clear detections
